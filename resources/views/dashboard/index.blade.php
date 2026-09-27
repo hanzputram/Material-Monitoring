@@ -63,7 +63,7 @@
     </div>
 
     <!-- 2. KPI METRICS CARDS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <!-- Card 1: Total RAB -->
         <div class="card-clean p-5 card-clean-hover">
             <div class="flex items-center justify-between mb-3">
@@ -143,6 +143,25 @@
                 </span>
             </div>
         </div>
+
+        <!-- Card 5: Pembelian di Luar RAB (Non-RAB) -->
+        <div class="card-clean p-5 card-clean-hover border-purple-200/80 bg-gradient-to-br from-white via-white to-purple-50/30">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-purple-700">Item di Luar RAB</span>
+                <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                </div>
+            </div>
+            <div class="text-2xl font-black text-slate-900 tracking-tight">
+                Rp {{ number_format($stats['non_rab_total_cost'] ?? 0, 0, ',', '.') }}
+            </div>
+            <div class="mt-2 flex items-center justify-between text-xs">
+                <span class="font-bold {{ ($stats['non_rab_items_count'] ?? 0) > 0 ? 'text-purple-700' : 'text-slate-500' }}">
+                    {{ $stats['non_rab_items_count'] ?? 0 }} Material Non-RAB
+                </span>
+                <a href="#non-rab-monitoring" class="text-purple-600 font-bold hover:underline">Lihat Rekapan &darr;</a>
+            </div>
+        </div>
     </div>
 
     <!-- 3. GRAFIK PERBANDINGAN BIAYA PER KATEGORI -->
@@ -157,16 +176,354 @@
         <div id="categoryCostChart" class="w-full h-64 sm:h-80"></div>
     </div>
 
-    <!-- 4. EXECUTIVE MONITORING & ASSESSMENT: MATERIAL VS RAB (BASELINE) -->
+    <!-- 4. REKAPAN MONITORING PEMBELIAN MATERIAL DI LUAR RAB (NON-RAB / UNBUDGETED) -->
+    <div id="non-rab-monitoring" class="card-clean overflow-hidden border border-purple-200/80 shadow-xs" x-data="{
+        searchNonRab: '',
+        filterStatus: 'all',
+        viewMode: 'table', // 'table' or 'cards'
+        items: {{ Js::from($nonRabPurchases) }},
+        matches(item) {
+            let s = (this.searchNonRab || '').trim().toLowerCase();
+            let matchesSearch = true;
+            if (s.length > 0) {
+                let poText = (item.pos || []).map(p => (p.po_number || '') + ' ' + (p.supplier ? p.supplier.name : '')).join(' ');
+                let doText = (item.dos || []).map(d => d.do_number || '').join(' ');
+                let text = [
+                    item.material_code || '',
+                    item.material_name || '',
+                    item.category || '',
+                    poText,
+                    doText
+                ].join(' ').toLowerCase();
+                matchesSearch = text.includes(s);
+            }
+
+            let matchesStatus = true;
+            if (this.filterStatus === 'completed') {
+                matchesStatus = item.status_type === 'completed';
+            } else if (this.filterStatus === 'partial') {
+                matchesStatus = item.status_type === 'partial';
+            } else if (this.filterStatus === 'pending') {
+                matchesStatus = item.status_type === 'pending';
+            } else if (this.filterStatus === 'unplanned_do') {
+                matchesStatus = item.status_type === 'unplanned_do';
+            }
+
+            return matchesSearch && matchesStatus;
+        },
+        filteredCount() {
+            return this.items.filter(it => this.matches(it)).length;
+        }
+    }">
+        <!-- Header Panel with Title, View Switcher, and Filters -->
+        <div class="p-4 sm:p-6 border-b border-purple-100 bg-gradient-to-r from-purple-50/60 via-white to-indigo-50/40 space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+                        <h3 class="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                            Rekapan Monitoring Pembelian Material di Luar RAB
+                        </h3>
+                        <span class="badge-clean bg-purple-100 text-purple-800 text-[11px] font-mono border border-purple-200 font-bold">
+                            Unbudgeted / Non-RAB
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500">
+                        Pengawasan khusus terhadap pengadaan material, alat bantu, atau item tambahan yang tidak tercantum dalam Bill of Material (BOM) RAB
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <input type="text" x-model="searchNonRab" placeholder="Cari material non-RAB, PO, supplier..." 
+                               class="w-full sm:w-64 text-xs pl-8 pr-7 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-2xs font-medium">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <button type="button" x-show="searchNonRab.length > 0" @click="searchNonRab = ''" class="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer">&times;</button>
+                    </div>
+
+                    <!-- View Switcher -->
+                    <div class="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/60 shadow-inner">
+                        <button type="button" @click="viewMode = 'table'" 
+                                :class="viewMode === 'table' ? 'bg-white text-purple-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'"
+                                class="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z"/></svg>
+                            Tabel Detail
+                        </button>
+                        <button type="button" @click="viewMode = 'cards'" 
+                                :class="viewMode === 'cards' ? 'bg-white text-purple-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'"
+                                class="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                            Kartu Visual
+                        </button>
+                    </div>
+
+                    @if(auth()->user()?->canWritePo())
+                        <a href="{{ route('procurement.po.index') }}" 
+                           class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-xl shadow-sm transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>+ Buat PO Non-RAB</span>
+                        </a>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Filter Pills & Summary Metrics -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-purple-100/60">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" @click="filterStatus = 'all'"
+                            :class="filterStatus === 'all' ? 'bg-purple-700 text-white shadow-xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium'"
+                            class="px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer">
+                        Semua (<span x-text="items.length"></span>)
+                    </button>
+                    <button type="button" @click="filterStatus = 'completed'"
+                            :class="filterStatus === 'completed' ? 'bg-emerald-600 text-white shadow-xs font-bold' : 'bg-slate-100 hover:bg-emerald-50 text-emerald-800 font-medium'"
+                            class="px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer">
+                        Tiba Lengkap (<span x-text="items.filter(i => i.status_type === 'completed').length"></span>)
+                    </button>
+                    <button type="button" @click="filterStatus = 'partial'"
+                            :class="filterStatus === 'partial' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'bg-slate-100 hover:bg-blue-50 text-blue-800 font-medium'"
+                            class="px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer">
+                        Sebagian Masuk (<span x-text="items.filter(i => i.status_type === 'partial').length"></span>)
+                    </button>
+                    <button type="button" @click="filterStatus = 'pending'"
+                            :class="filterStatus === 'pending' ? 'bg-amber-600 text-white shadow-xs font-bold' : 'bg-slate-100 hover:bg-amber-50 text-amber-800 font-medium'"
+                            class="px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer">
+                        Menunggu Kirim (<span x-text="items.filter(i => i.status_type === 'pending').length"></span>)
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="text-slate-500 font-medium">Total Komitmen Belanja Non-RAB:</span>
+                    <span class="font-black text-purple-900 bg-purple-100/90 px-3 py-1 rounded-lg border border-purple-200 font-mono text-[13px]">
+                        Rp {{ number_format($stats['non_rab_total_cost'] ?? 0, 0, ',', '.') }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW A: TABEL DETAIL REKAPAN NON-RAB -->
+        <div x-show="viewMode === 'table'" class="overflow-x-auto">
+            <template x-if="filteredCount() > 0">
+                <table class="w-full text-left text-xs table-clean min-w-[950px]">
+                    <thead class="bg-slate-50/80 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                        <tr>
+                            <th class="py-3.5 px-4 w-24">Kode</th>
+                            <th class="py-3.5 px-5">Material Non-RAB & Spesifikasi</th>
+                            <th class="py-3.5 px-4">Referensi PO & Supplier</th>
+                            <th class="py-3.5 px-4 text-right">Dipesan (PO)</th>
+                            <th class="py-3.5 px-4 text-right">Harga Satuan</th>
+                            <th class="py-3.5 px-4 text-right">Total Biaya (Rp)</th>
+                            <th class="py-3.5 px-5 text-left min-w-[180px]">Realisasi Fisik (DO)</th>
+                            <th class="py-3.5 px-4 text-center">Status Pemenuhan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <template x-for="item in items.filter(it => matches(it))" :key="item.material_id">
+                            <tr class="hover:bg-purple-50/30 transition-colors">
+                                <td class="py-3 px-4 font-mono font-bold text-slate-800" x-text="item.material_code"></td>
+                                <td class="py-3 px-5">
+                                    <div class="font-extrabold text-slate-900" x-text="item.material_name"></div>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-[10px] font-bold text-purple-700 uppercase" x-text="item.category"></span>
+                                        <span class="text-slate-300">•</span>
+                                        <span class="text-[10px] text-slate-400 font-medium">Satuan: <span x-text="item.unit"></span></span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <template x-if="item.pos && item.pos.length > 0">
+                                        <div>
+                                            <template x-for="po in item.pos" :key="po.id">
+                                                <div>
+                                                    <span class="font-mono font-bold text-purple-700" x-text="po.po_number"></span>
+                                                    <div class="text-[11px] text-slate-500" x-text="po.supplier ? po.supplier.name : '-'"></div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <template x-if="!item.pos || item.pos.length === 0">
+                                        <span class="text-slate-400 italic text-[11px]">Tanpa PO (Langsung DO)</span>
+                                    </template>
+                                </td>
+                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-800" 
+                                    x-text="parseFloat(item.po_qty).toLocaleString('id-ID', { maximumFractionDigits: 4 }) + ' ' + item.unit">
+                                </td>
+                                <td class="py-3 px-4 text-right font-mono text-slate-600" 
+                                    x-text="'Rp ' + Number(item.avg_unit_price).toLocaleString('id-ID')">
+                                </td>
+                                <td class="py-3 px-4 text-right font-mono font-black text-purple-950" 
+                                    x-text="'Rp ' + Number(item.po_cost).toLocaleString('id-ID')">
+                                </td>
+                                <td class="py-3 px-5">
+                                    <div class="flex items-center justify-between text-[11px] mb-1">
+                                        <span class="font-bold text-slate-700" x-text="'Masuk: ' + parseFloat(item.do_qty).toLocaleString('id-ID', { maximumFractionDigits: 4 }) + ' ' + item.unit"></span>
+                                        <span class="font-mono text-slate-400" x-text="item.po_qty > 0 ? (Math.round((item.do_qty / item.po_qty) * 100) + '%') : '-'"></span>
+                                    </div>
+                                    <!-- Progress Bar -->
+                                    <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                        <div class="h-1.5 rounded-full bg-purple-600" 
+                                             :style="'width: ' + Math.min(100, item.po_qty > 0 ? Math.round((item.do_qty / item.po_qty) * 100) : 0) + '%'"></div>
+                                    </div>
+                                    <!-- Surat Jalan badges -->
+                                    <template x-if="item.dos && item.dos.length > 0">
+                                        <div class="mt-1 flex flex-wrap gap-1">
+                                            <template x-for="d in item.dos" :key="d.id">
+                                                <button type="button" 
+                                                        @click="d.attachment_path ? openDocPreview('/storage/' + d.attachment_path, 'Surat Jalan: ' + d.do_number) : null"
+                                                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 hover:bg-purple-100 hover:text-purple-800 transition-colors cursor-pointer"
+                                                        :title="d.attachment_path ? 'Klik untuk melihat scan surat jalan' : 'Surat Jalan tanpa lampiran scan'">
+                                                    <span x-text="d.do_number"></span>
+                                                    <template x-if="d.attachment_path">
+                                                        <svg class="w-2.5 h-2.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                                    </template>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border shadow-2xs" 
+                                          :class="item.badge_cls" 
+                                          x-text="item.status_label">
+                                    </span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </template>
+        </div>
+
+        <!-- VIEW B: KARTU VISUAL REKAPAN NON-RAB -->
+        <div x-show="viewMode === 'cards'" class="p-6">
+            <template x-if="filteredCount() > 0">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template x-for="item in items.filter(it => matches(it))" :key="item.material_id">
+                        <div class="rounded-2xl border border-purple-200/80 bg-white p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                                    <span class="px-2 py-0.5 text-[10px] font-mono font-bold bg-purple-50 text-purple-700 rounded border border-purple-200" x-text="item.material_code"></span>
+                                    <span class="badge-clean text-[10px] font-extrabold border" :class="item.badge_cls" x-text="item.status_label"></span>
+                                </div>
+                                <h4 class="text-sm font-extrabold text-slate-900 mt-2 line-clamp-1" x-text="item.material_name"></h4>
+                                <div class="text-[11px] text-slate-400 capitalize mt-0.5" x-text="item.category"></div>
+
+                                <div class="mt-3 p-3 bg-slate-50/80 rounded-xl space-y-2 border border-slate-100">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-slate-500 font-medium">Total Biaya PO:</span>
+                                        <span class="font-mono font-black text-purple-900" x-text="'Rp ' + Number(item.po_cost).toLocaleString('id-ID')"></span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-slate-500 font-medium">Dipesan vs Tiba:</span>
+                                        <span class="font-mono font-bold text-slate-700" 
+                                              x-text="parseFloat(item.do_qty).toLocaleString('id-ID') + ' / ' + parseFloat(item.po_qty).toLocaleString('id-ID') + ' ' + item.unit"></span>
+                                    </div>
+                                    <!-- Progress Bar -->
+                                    <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                        <div class="h-1.5 rounded-full bg-purple-600" 
+                                             :style="'width: ' + Math.min(100, item.po_qty > 0 ? Math.round((item.do_qty / item.po_qty) * 100) : 0) + '%'"></div>
+                                    </div>
+                                </div>
+
+                                <template x-if="item.pos && item.pos.length > 0">
+                                    <div class="mt-2.5 text-[11px] text-slate-500">
+                                        <span class="font-semibold text-slate-700">No. PO:</span>
+                                        <span class="font-mono text-purple-700 font-bold" x-text="item.pos[0].po_number"></span>
+                                        <template x-if="item.pos[0].supplier">
+                                            <span x-text="' (' + item.pos[0].supplier.name + ')'"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                <span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+                                    100% Unbudgeted
+                                </span>
+                                <template x-if="item.dos && item.dos.length > 0 && item.dos[0].attachment_path">
+                                    <button type="button" 
+                                            @click="openDocPreview('/storage/' + item.dos[0].attachment_path, 'Surat Jalan: ' + item.dos[0].do_number)"
+                                            class="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 hover:text-purple-900 cursor-pointer">
+                                        <span>Lihat Scan DO</span>
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <!-- EMPTY STATE (JIKA TIDAK ADA / TIDAK COCOK SEARCH) -->
+        <div x-show="filteredCount() === 0" class="py-12 text-center" x-cloak>
+            <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-3 border border-purple-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <p class="text-sm font-bold text-slate-800">
+                <template x-if="items.length === 0">
+                    <span>Tidak Ada Pembelian di Luar RAB</span>
+                </template>
+                <template x-if="items.length > 0">
+                    <span>Tidak Ada Item Non-RAB yang Cocok</span>
+                </template>
+            </p>
+            <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                <template x-if="items.length === 0">
+                    <span>Seluruh pengadaan material pada proyek ini berjalan tepat 100% di dalam koridor Bill of Material (BOM) rencana anggaran proyek.</span>
+                </template>
+                <template x-if="items.length > 0">
+                    <span>Pencarian tidak menemukan material atau surat jalan yang sesuai filter.</span>
+                </template>
+            </p>
+            <template x-if="items.length === 0 && {{ auth()->user()?->canWritePo() ? 'true' : 'false' }}">
+                <a href="{{ route('procurement.po.index') }}" class="inline-flex items-center gap-1.5 mt-4 px-4 py-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <span>+ Buat Purchase Order (PO)</span>
+                </a>
+            </template>
+        </div>
+    </div>
+
+    <!-- 5. EXECUTIVE MONITORING & ASSESSMENT: MATERIAL VS RAB (BASELINE) -->
     <div class="card-clean overflow-hidden" x-data="{
         search: '',
         statusFilter: 'all',
         viewMode: 'cards', // 'cards' (executive cards) or 'table' (analytical table)
-        filterItem(row) {
-            let matchesSearch = row.name.toLowerCase().includes(this.search.toLowerCase()) || 
-                                row.code.toLowerCase().includes(this.search.toLowerCase()) ||
-                                row.category.toLowerCase().includes(this.search.toLowerCase());
-            
+        matchesItem(row) {
+            let s = (this.search || '').trim().toLowerCase();
+            let matchesSearch = true;
+            if (s.length > 0) {
+                let cleanS = s.replace(/[^a-z0-9]/gi, '');
+                let targetText = [
+                    row.name || '',
+                    row.code || '',
+                    row.baseCategory || '',
+                    row.rabCategory || '',
+                    row.rabCode || '',
+                    row.rabFull || '',
+                    row.sectionTitle || '',
+                    row.sectionSubtitle || ''
+                ].join(' ').toLowerCase();
+
+                let cleanTarget = targetText.replace(/[^a-z0-9]/gi, '');
+
+                // 1. Direct substring match or normalized alphanumeric match
+                let isDirect = targetText.includes(s) || (cleanS.length > 1 && cleanTarget.includes(cleanS));
+
+                // 2. Tokenized words match (handles typos or partial queries)
+                let isTokenMatch = false;
+                let words = s.split(/[\s.&,\-_]+/).filter(w => w.length >= 2);
+                if (words.length > 0) {
+                    let matchedWords = words.filter(w => targetText.includes(w));
+                    if (matchedWords.length === words.length || (words.length >= 3 && matchedWords.length >= words.length - 1)) {
+                        isTokenMatch = true;
+                    }
+                }
+
+                matchesSearch = isDirect || isTokenMatch;
+            }
+
             let matchesStatus = true;
             if (this.statusFilter === 'over') {
                 matchesStatus = row.evalType === 'over';
@@ -177,7 +534,19 @@
             } else if (this.statusFilter === 'normal') {
                 matchesStatus = row.evalType === 'normal';
             }
+
             return matchesSearch && matchesStatus;
+        },
+        hasMatchingItems(items) {
+            if (!items || !items.length) return false;
+            return items.some(item => this.matchesItem(item));
+        },
+        countMatchingItems(items) {
+            if (!items || !items.length) return 0;
+            return items.filter(item => this.matchesItem(item)).length;
+        },
+        filterItem(row) {
+            return this.matchesItem(row);
         }
     }">
         @php
@@ -202,9 +571,10 @@
                 <div class="flex flex-wrap items-center gap-3">
                     <!-- Search Input -->
                     <div class="relative">
-                        <input type="text" x-model="search" placeholder="Cari nama / kode material..." 
-                               class="w-full sm:w-60 text-xs pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                        <input type="text" x-model="search" placeholder="Cari material, kode, atau kategori..." 
+                               class="w-full sm:w-64 text-xs pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-2xs font-medium">
                         <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <button type="button" x-show="search.length > 0" @click="search = ''" class="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer" title="Hapus Pencarian">&times;</button>
                     </div>
 
                     <!-- View Switcher (Cards vs Table) -->
@@ -292,40 +662,98 @@
                     <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold" :class="statusFilter === 'normal' ? 'bg-emerald-800 text-white' : 'bg-emerald-200 text-emerald-900'">{{ $normalItems->count() }}</span>
                 </button>
             </div>
-        </div>        <!-- 1. VIEW MODE A: EXECUTIVE VISUAL CARDS (HIERARKIS RAB TREE — 4 KOLOM) -->
+        </div>
+
+        <!-- 1. VIEW MODE A: EXECUTIVE VISUAL CARDS (HIERARKIS RAB TREE — 4 KOLOM) -->
         <div x-show="viewMode === 'cards'" class="p-6 space-y-8">
+            @php
+                $allCardsMats = [];
+                foreach ($treeRealizations as $cg) {
+                    foreach ($cg['sections'] as $s) {
+                        foreach ($s['materials'] as $m) {
+                            $allCardsMats[] = [
+                                'name' => $m->material->name,
+                                'code' => $m->material->code,
+                                'baseCategory' => $m->material->category,
+                                'rabCategory' => $cg['category']->name,
+                                'rabCode' => $cg['category']->code,
+                                'rabFull' => $cg['category']->code . '. ' . $cg['category']->name,
+                                'sectionTitle' => $s['title'],
+                                'sectionSubtitle' => $s['subtitle'] ?? '',
+                                'evalType' => $m->eval_type,
+                            ];
+                        }
+                    }
+                }
+            @endphp
+
             @forelse($treeRealizations as $catGroup)
-                <div class="space-y-6">
+                @php
+                    $catAllMats = [];
+                    foreach ($catGroup['sections'] as $sec) {
+                        foreach ($sec['materials'] as $m) {
+                            $catAllMats[] = [
+                                'name' => $m->material->name,
+                                'code' => $m->material->code,
+                                'baseCategory' => $m->material->category,
+                                'rabCategory' => $catGroup['category']->name,
+                                'rabCode' => $catGroup['category']->code,
+                                'rabFull' => $catGroup['category']->code . '. ' . $catGroup['category']->name,
+                                'sectionTitle' => $sec['title'],
+                                'sectionSubtitle' => $sec['subtitle'] ?? '',
+                                'evalType' => $m->eval_type,
+                            ];
+                        }
+                    }
+                @endphp
+
+                <div x-show="hasMatchingItems({{ json_encode($catAllMats) }})" class="space-y-6">
                     <!-- KATEGORI BANNER (SESUAI WIREFRAME USER) -->
-                    <div class="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 sm:p-5 shadow-md border border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    @php
+                        $isUnmappedGroup = $catGroup['is_unmapped'] ?? false;
+                    @endphp
+                    <div class="rounded-2xl {{ $isUnmappedGroup ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-amber-500/40' : 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-slate-700/60' }} text-white p-4 sm:p-5 shadow-md border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center font-black text-sm flex-shrink-0">
+                            <div class="w-9 h-9 rounded-xl {{ $isUnmappedGroup ? 'bg-amber-500/20 text-amber-400 border-amber-400/30' : 'bg-blue-500/20 text-blue-400 border-blue-400/30' }} border flex items-center justify-center font-black text-sm flex-shrink-0">
                                 {{ $catGroup['category']->code }}
                             </div>
                             <div>
-                                <span class="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest block">KATEGORI UTAMA RAB</span>
+                                <span class="text-[10px] font-extrabold {{ $isUnmappedGroup ? 'text-amber-400' : 'text-blue-400' }} uppercase tracking-widest block">
+                                    {{ $isUnmappedGroup ? 'MATERIAL DI LUAR ANGGARAN RAB (NON-RAB)' : 'KATEGORI UTAMA RAB' }}
+                                </span>
                                 <h3 class="text-base sm:text-lg font-black text-white tracking-tight leading-tight">
                                     {{ $catGroup['category']->code }}. {{ $catGroup['category']->name }}
                                 </h3>
                             </div>
                         </div>
 
-                        @php
-                            $catTotalMats = 0;
-                            foreach ($catGroup['sections'] as $sec) {
-                                $catTotalMats += count($sec['materials']);
-                            }
-                        @endphp
                         <div class="flex items-center gap-2 self-start sm:self-auto">
                             <span class="px-3 py-1 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">
-                                {{ $catTotalMats }} Material
+                                <span x-text="countMatchingItems({{ json_encode($catAllMats) }})"></span> Material
                             </span>
                         </div>
                     </div>
 
                     <!-- SUB-KATEGORI SECTIONS -->
                     @foreach($catGroup['sections'] as $section)
-                        <div class="space-y-3.5 pl-1 sm:pl-2">
+                        @php
+                            $secMats = [];
+                            foreach ($section['materials'] as $m) {
+                                $secMats[] = [
+                                    'name' => $m->material->name,
+                                    'code' => $m->material->code,
+                                    'baseCategory' => $m->material->category,
+                                    'rabCategory' => $catGroup['category']->name,
+                                    'rabCode' => $catGroup['category']->code,
+                                    'rabFull' => $catGroup['category']->code . '. ' . $catGroup['category']->name,
+                                    'sectionTitle' => $section['title'],
+                                    'sectionSubtitle' => $section['subtitle'] ?? '',
+                                    'evalType' => $m->eval_type,
+                                ];
+                            }
+                        @endphp
+
+                        <div x-show="hasMatchingItems({{ json_encode($secMats) }})" class="space-y-3.5 pl-1 sm:pl-2">
                             <!-- Sub Kategori Heading Bar -->
                             <div class="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80">
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -340,7 +768,7 @@
                                     @endif
                                 </div>
                                 <span class="text-[11px] font-semibold text-slate-400">
-                                    {{ count($section['materials']) }} Item Material
+                                    <span x-text="countMatchingItems({{ json_encode($secMats) }})"></span> Item Material
                                 </span>
                             </div>
 
@@ -352,39 +780,48 @@
                                         $planned = (float) $rel->planned_qty;
                                         $pct = $planned > 0 ? round(($actual / $planned) * 100, 1) : 0;
                                         $unit = $rel->material->defaultUnit?->code ?? '-';
+                                        $evalType = $rel->eval_type;
 
-                                        if ($rel->status === 'kelebihan' || $actual > $planned) {
-                                            $evalType = 'over';
+                                        if ($evalType === 'over') {
                                             $cardBorder = 'border-rose-300 ring-1 ring-rose-200 bg-gradient-to-b from-rose-50/40 via-white to-white';
                                             $badgeCls = 'bg-rose-100 text-rose-800 border-rose-200';
                                             $badgeLabel = 'Melebihi RAB (+' . number_format($rel->variance_pct, 1, ',', '.') . '%)';
-                                            $descNote = 'Kuantitas fisik diterima melampaui RAB sebesar +' . number_format($rel->variance_qty, 1, ',', '.') . ' ' . $unit . '.';
-                                        } elseif ($actual == 0) {
-                                            $evalType = 'pending';
+                                            $descNote = 'Kuantitas fisik diterima melampaui RAB sebesar +' . format_qty($rel->variance_qty) . ' ' . $unit . '.';
+                                        } elseif ($evalType === 'pending') {
                                             $cardBorder = 'border-slate-200 bg-white hover:border-slate-300';
                                             $badgeCls = 'bg-slate-100 text-slate-600 border-slate-200';
                                             $badgeLabel = 'Belum Ada Pengiriman (0%)';
                                             $descNote = 'Belum ada Surat Jalan (DO) fisik diterima di lapangan.';
-                                        } elseif ($actual < $planned) {
-                                            $evalType = 'partial';
+                                        } elseif ($evalType === 'partial') {
                                             $cardBorder = 'border-blue-200 bg-white hover:border-blue-300';
                                             $badgeCls = 'bg-blue-100 text-blue-800 border-blue-200';
                                             $badgeLabel = 'Sebagian Masuk (' . $pct . '%)';
-                                            $descNote = 'Tersisa ' . number_format(abs($rel->variance_qty), 1, ',', '.') . ' ' . $unit . ' lagi untuk melengkapi kuota RAB.';
+                                            $descNote = 'Tersisa ' . format_qty(abs($rel->variance_qty)) . ' ' . $unit . ' lagi untuk melengkapi kuota RAB.';
                                         } else {
-                                            $evalType = 'normal';
                                             $cardBorder = 'border-emerald-200 bg-white hover:border-emerald-300';
                                             $badgeCls = 'bg-emerald-100 text-emerald-800 border-emerald-200';
                                             $badgeLabel = 'Sesuai RAB (100%)';
                                             $descNote = 'Seluruh kuota material telah terpenuhi 100% tepat sesuai RAB.';
                                         }
+
+                                        $matDescriptor = [
+                                            'name' => $rel->material->name,
+                                            'code' => $rel->material->code,
+                                            'baseCategory' => $rel->material->category,
+                                            'rabCategory' => $catGroup['category']->name,
+                                            'rabCode' => $catGroup['category']->code,
+                                            'rabFull' => $catGroup['category']->code . '. ' . $catGroup['category']->name,
+                                            'sectionTitle' => $section['title'],
+                                            'sectionSubtitle' => $section['subtitle'] ?? '',
+                                            'evalType' => $evalType,
+                                        ];
                                     @endphp
 
                                     <!-- INTERACTIVE CLICKABLE CARD (REDIRECT TO DETAIL & HISTORY) -->
-                                    <div x-show="filterItem({ name: '{{ addslashes($rel->material->name) }}', code: '{{ $rel->material->code }}', category: '{{ $rel->material->category }}', evalType: '{{ $evalType }}' })"
+                                    <div x-show="matchesItem({{ json_encode($matDescriptor) }})"
                                          class="h-full">
                                         <a href="{{ route('monitoring.material.show', $rel->id) }}" 
-                                           class="group h-full rounded-2xl border p-4 transition-all duration-200 hover:shadow-xl hover:scale-[1.015] hover:border-blue-500 cursor-pointer flex flex-col justify-between {{ $cardBorder }}"
+                                            class="group h-full rounded-2xl border p-4 transition-all duration-200 hover:shadow-xl hover:scale-[1.015] hover:border-blue-500 cursor-pointer flex flex-col justify-between {{ $cardBorder }}"
                                            title="Klik untuk melihat riwayat DO, faktur invoice, dan alokasi RAB material ini">
                                             
                                             <div>
@@ -464,18 +901,18 @@
                                                 <div class="grid grid-cols-3 gap-1.5 mt-2.5 text-center">
                                                     <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
                                                         <span class="block text-[9px] text-slate-400 font-bold uppercase">RAB</span>
-                                                        <span class="text-xs font-mono font-bold text-slate-800">{{ number_format($planned, 1, ',', '.') }}</span>
+                                                        <span class="text-xs font-mono font-bold text-slate-800">{{ format_qty($planned) }}</span>
                                                         <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
                                                     </div>
                                                     <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
                                                         <span class="block text-[9px] text-slate-400 font-bold uppercase">DO</span>
-                                                        <span class="text-xs font-mono font-extrabold {{ $actual > 0 ? 'text-blue-700' : 'text-slate-400' }}">{{ number_format($actual, 1, ',', '.') }}</span>
+                                                        <span class="text-xs font-mono font-extrabold {{ $actual > 0 ? 'text-blue-700' : 'text-slate-400' }}">{{ format_qty($actual) }}</span>
                                                         <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
                                                     </div>
                                                     <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
                                                         <span class="block text-[9px] text-slate-400 font-bold uppercase">Selisih</span>
                                                         <span class="text-xs font-mono font-extrabold {{ $rel->variance_qty > 0 ? 'text-rose-600' : ($rel->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">
-                                                            {{ $rel->variance_qty > 0 ? '+' : '' }}{{ number_format($rel->variance_qty, 1, ',', '.') }}
+                                                            {{ $rel->variance_qty > 0 ? '+' : '' }}{{ format_qty($rel->variance_qty) }}
                                                         </span>
                                                         <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
                                                     </div>
@@ -516,10 +953,41 @@
                     Belum ada data realisasi material di proyek ini.
                 </div>
             @endforelse
+
+            <!-- Empty state when search or filter yields 0 matches in Cards View -->
+            <div x-show="hasMatchingItems({{ json_encode($allCardsMats) }}) === false" class="py-16 text-center" x-cloak>
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mb-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <p class="text-sm font-bold text-slate-800">Tidak ada kategori atau material yang cocok</p>
+                <p class="text-xs text-slate-500 mt-1">
+                    Pencarian "<span x-text="search" class="font-semibold text-slate-700"></span>" tidak menemukan material yang sesuai.
+                </p>
+                <button type="button" @click="search = ''; statusFilter = 'all'" 
+                        class="mt-4 px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer">
+                    Reset Filter & Tampilkan Semua
+                </button>
+            </div>
         </div>
 
         <!-- 2. VIEW MODE B: SMART ANALYTICAL TABLE (DENGAN INDIKATOR VISUAL) -->
-        <div x-show="viewMode === 'table'" class="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div x-show="viewMode === 'table'" class="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-xs" x-cloak>
+            @php
+                $allTableMats = [];
+                foreach ($realizations as $rel) {
+                    $allTableMats[] = [
+                        'name' => $rel->material->name,
+                        'code' => $rel->material->code,
+                        'baseCategory' => $rel->material->category,
+                        'rabCategory' => $rel->rab_category_name ?? '',
+                        'rabCode' => $rel->rab_category_code ?? '',
+                        'rabFull' => $rel->rab_category_full ?? '',
+                        'sectionTitle' => $rel->rab_section_title ?? '',
+                        'sectionSubtitle' => $rel->rab_section_subtitle ?? '',
+                        'evalType' => $rel->eval_type,
+                    ];
+                }
+            @endphp
             <table class="w-full text-left text-xs table-clean min-w-[1040px]">
                 <thead class="bg-slate-50/90 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px] whitespace-nowrap">
                     <tr>
@@ -540,22 +1008,27 @@
                             $planned = (float) $rel->planned_qty;
                             $pct = $planned > 0 ? round(($actual / $planned) * 100, 1) : 0;
                             $unit = $rel->material->defaultUnit?->code ?? '-';
+                            $evalType = $rel->eval_type;
 
-                            if ($rel->status === 'kelebihan' || $actual > $planned) {
-                                $evalType = 'over';
+                            if ($evalType === 'over') {
                                 $rowAccent = 'border-l-4 border-l-rose-500 bg-rose-50/20';
-                            } elseif ($actual == 0) {
-                                $evalType = 'pending';
-                                $rowAccent = '';
-                            } elseif ($actual < $planned) {
-                                $evalType = 'partial';
-                                $rowAccent = '';
                             } else {
-                                $evalType = 'normal';
                                 $rowAccent = '';
                             }
+
+                            $rowDescriptor = [
+                                'name' => $rel->material->name,
+                                'code' => $rel->material->code,
+                                'baseCategory' => $rel->material->category,
+                                'rabCategory' => $rel->rab_category_name ?? '',
+                                'rabCode' => $rel->rab_category_code ?? '',
+                                'rabFull' => $rel->rab_category_full ?? '',
+                                'sectionTitle' => $rel->rab_section_title ?? '',
+                                'sectionSubtitle' => $rel->rab_section_subtitle ?? '',
+                                'evalType' => $evalType,
+                            ];
                         @endphp
-                        <tr x-show="filterItem({ name: '{{ addslashes($rel->material->name) }}', code: '{{ $rel->material->code }}', category: '{{ $rel->material->category }}', evalType: '{{ $evalType }}' })" 
+                        <tr x-show="matchesItem({{ json_encode($rowDescriptor) }})" 
                             class="transition-colors hover:bg-slate-50/80 {{ $rowAccent }}">
                             <td class="py-3.5 px-4 whitespace-nowrap">
                                 <span class="px-2.5 py-1 font-mono text-[11px] font-bold bg-slate-100/90 text-slate-700 rounded-md border border-slate-200/80 inline-block shadow-2xs">
@@ -574,12 +1047,12 @@
                                 </span>
                             </td>
                             <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-800 whitespace-nowrap text-xs">
-                                {{ number_format($planned, 2, ',', '.') }}
+                                {{ format_qty($planned) }}
                             </td>
                             <td class="py-3.5 px-5 whitespace-nowrap">
                                 <div class="w-48">
                                     <div class="flex items-center justify-between font-mono text-xs font-bold mb-1.5">
-                                        <span class="{{ $actual > 0 ? 'text-blue-700 font-extrabold' : 'text-slate-400' }}">{{ number_format($actual, 2, ',', '.') }}</span>
+                                        <span class="{{ $actual > 0 ? 'text-blue-700 font-extrabold' : 'text-slate-400' }}">{{ format_qty($actual) }}</span>
                                         <span class="text-[11px] font-extrabold {{ $evalType === 'over' ? 'text-rose-600' : ($evalType === 'normal' ? 'text-emerald-700' : ($evalType === 'partial' ? 'text-blue-700' : 'text-slate-400')) }}">
                                             {{ $pct }}%
                                         </span>
@@ -597,15 +1070,15 @@
                             <td class="py-3.5 px-4 text-right font-mono whitespace-nowrap">
                                 @if($evalType === 'over')
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-black text-xs border border-rose-200 shadow-2xs">
-                                        +{{ number_format($rel->variance_qty, 2, ',', '.') }}
+                                        +{{ format_qty($rel->variance_qty) }}
                                     </span>
                                 @elseif($actual == 0)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-slate-400 font-semibold text-xs">
-                                        -{{ number_format($planned, 2, ',', '.') }}
+                                        -{{ format_qty($planned) }}
                                     </span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-amber-700 font-bold text-xs">
-                                        {{ number_format($rel->variance_qty, 2, ',', '.') }}
+                                        {{ format_qty($rel->variance_qty) }}
                                     </span>
                                 @endif
                             </td>
@@ -654,6 +1127,12 @@
                             <td colspan="8" class="py-8 text-center text-slate-400">Belum ada data realisasi material.</td>
                         </tr>
                     @endforelse
+
+                    <tr x-show="hasMatchingItems({{ json_encode($allTableMats) }}) === false" x-cloak>
+                        <td colspan="8" class="py-12 text-center text-slate-400">
+                            Tidak ada data material yang sesuai filter atau kata kunci pencarian.
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -684,9 +1163,11 @@
                         <div class="flex items-center gap-2">
                             <span class="badge-clean bg-emerald-100 text-emerald-800 text-[10px]">{{ ucfirst($do->status) }}</span>
                             @if($do->attachment_path)
-                                <a href="{{ asset('storage/' . $do->attachment_path) }}" target="_blank" class="text-xs text-blue-600 font-semibold hover:underline">
+                                <button type="button" 
+                                        onclick="openDocPreview('{{ asset('storage/' . $do->attachment_path) }}', 'Surat Jalan (DO): {{ addslashes($do->do_number) }}')" 
+                                        class="text-xs text-blue-600 font-semibold hover:underline cursor-pointer">
                                     Bukti Fisik
-                                </a>
+                                </button>
                             @endif
                         </div>
                     </div>

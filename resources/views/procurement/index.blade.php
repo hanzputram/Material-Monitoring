@@ -104,18 +104,19 @@
                                         <div class="flex items-center gap-2">
                                             <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                                             <span class="font-bold text-slate-800">{{ $it->material->name }}:</span>
-                                            <span class="font-mono font-semibold text-blue-700">{{ number_format($it->qty_received, 2, ',', '.') }} {{ $it->unit?->code }}</span>
+                                            <span class="font-mono font-semibold text-blue-700">{{ format_qty($it->qty_received) }} {{ $it->unit?->code }}</span>
                                         </div>
                                     @endforeach
                                 </div>
                             </td>
                             <td class="py-3 px-4 text-center">
                                 @if($do->attachment_path)
-                                    <a href="{{ asset('storage/' . $do->attachment_path) }}" target="_blank" 
-                                       class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200">
+                                    <button type="button" 
+                                            onclick="openDocPreview('{{ asset('storage/' . $do->attachment_path) }}', 'Surat Jalan (DO): {{ addslashes($do->do_number) }}')"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 cursor-pointer">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         Buka Lampiran
-                                    </a>
+                                    </button>
                                 @else
                                     <span class="text-rose-500 text-[10px] font-bold">Tanpa Bukti</span>
                                 @endif
@@ -169,11 +170,12 @@
                             <td class="py-3 px-4 text-right font-mono font-bold text-emerald-700">Rp {{ number_format($inv->amount, 2, ',', '.') }}</td>
                             <td class="py-3 px-4 text-center">
                                 @if($inv->attachment_path)
-                                    <a href="{{ asset('storage/' . $inv->attachment_path) }}" target="_blank" 
-                                       class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200">
+                                    <button type="button" 
+                                            onclick="openDocPreview('{{ asset('storage/' . $inv->attachment_path) }}', 'Faktur Tagihan (Invoice): {{ addslashes($inv->invoice_number) }}')"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 cursor-pointer">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         Faktur Scan
-                                    </a>
+                                    </button>
                                 @else
                                     <span class="text-rose-500 text-[10px] font-bold">Tanpa Bukti</span>
                                 @endif

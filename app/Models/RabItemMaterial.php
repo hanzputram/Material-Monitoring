@@ -9,10 +9,12 @@ class RabItemMaterial extends Model
     protected $fillable = [
         'rab_item_id',
         'material_id',
+        'parent_id',
         'volume',
         'unit_id',
         'unit_price',
         'total_price',
+        'notes',
         'input_by',
     ];
 
@@ -73,5 +75,25 @@ class RabItemMaterial extends Model
     public function inputUser()
     {
         return $this->belongsTo(User::class, 'input_by');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(RabItemMaterial::class, 'parent_id');
+    }
+
+    public function breakdowns()
+    {
+        return $this->hasMany(RabItemMaterial::class, 'parent_id')->orderBy('id');
+    }
+
+    public function children()
+    {
+        return $this->breakdowns();
+    }
+
+    public function getFormattedVolumeAttribute(): string
+    {
+        return \App\Helpers\NumberHelper::formatQty($this->volume);
     }
 }

@@ -95,6 +95,11 @@ class DashboardController extends Controller
                         if (!isset($subDirectMats[$im->material_id])) {
                             $rel = $realizations->firstWhere('material_id', $im->material_id);
                             if ($rel) {
+                                $rel->rab_category_name = $root->name;
+                                $rel->rab_category_code = $root->code;
+                                $rel->rab_category_full = $root->code . '. ' . $root->name;
+                                $rel->rab_section_title = $sub->code . ' ' . $sub->name;
+                                $rel->rab_section_subtitle = null;
                                 $subDirectMats[$im->material_id] = $rel;
                                 $allMappedMaterialIds[] = $im->material_id;
                             }
@@ -118,6 +123,11 @@ class DashboardController extends Controller
                             if (!isset($subSubMats[$im->material_id])) {
                                 $rel = $realizations->firstWhere('material_id', $im->material_id);
                                 if ($rel) {
+                                    $rel->rab_category_name = $root->name;
+                                    $rel->rab_category_code = $root->code;
+                                    $rel->rab_category_full = $root->code . '. ' . $root->name;
+                                    $rel->rab_section_title = $sub->code . ' ' . $sub->name;
+                                    $rel->rab_section_subtitle = $subSub->code . ' ' . $subSub->name;
                                     $subSubMats[$im->material_id] = $rel;
                                     $allMappedMaterialIds[] = $im->material_id;
                                 }
@@ -140,23 +150,101 @@ class DashboardController extends Controller
             }
         }
 
-        // Catch any realizations not explicitly under the mapped nodes
-        $unmapped = $realizations->whereNotIn('material_id', $allMappedMaterialIds);
-        if ($unmapped->isNotEmpty()) {
-            $treeRealizations[] = [
-                'category' => (object)[
-                    'code' => 'UMUM',
-                    'name' => 'MATERIAL UMUM & LAIN-LAIN'
-                ],
-                'sections' => [
-                    [
-                        'title' => 'Daftar Material Tambahan',
-                        'subtitle' => null,
-                        'materials' => $unmapped->values()->all()
-                    ]
-                ]
+        // 7. Non-RAB Purchases Recap (Pembelian & Pengadaan di Luar RAB / Unbudgeted)
+        // Pengawasan material yang dipesan / diterima tetapi TIDAK ADA di struktur alokasi RAB Tree proyek
+        $nonRabPoItems = \App\Models\PurchaseOrderItem::whereHas('purchaseOrder', function ($q) use ($currentProject) {
+            $q->where('project_id', $currentProject->id);
+        })
+        ->whereNotIn('material_id', $allMappedMaterialIds)
+        ->with(['material.defaultUnit', 'purchaseOrder.supplier', 'unit'])
+        ->get();
+
+        $nonRabDoItems = \App\Models\DeliveryOrderItem::whereHas('deliveryOrder', function ($q) use ($currentProject) {
+            $q->where('project_id', $currentProject->id);
+        })
+        ->whereNotIn('material_id', $allMappedMaterialIds)
+        ->with(['material.defaultUnit', 'deliveryOrder.supplier', 'deliveryOrder.receiver', 'unit'])
+        ->get();
+
+        $nonRabRealizations = $realizations->whereNotIn('material_id', $allMappedMaterialIds);
+
+        $allNonRabMaterialIds = array_unique(array_merge(
+            $nonRabPoItems->pluck('material_id')->toArray(),
+            $nonRabDoItems->pluck('material_id')->toArray(),
+            $nonRabRealizations->pluck('material_id')->toArray()
+        ));
+
+        $nonRabPurchases = [];
+        $totalNonRabPoCost = 0;
+        $totalNonRabDoQty = 0;
+
+        foreach ($allNonRabMaterialIds as $matId) {
+            $mPoItems = $nonRabPoItems->where('material_id', $matId);
+            $mDoItems = $nonRabDoItems->where('material_id', $matId);
+            $mRealization = $nonRabRealizations->firstWhere('material_id', $matId);
+
+            $mat = $mPoItems->first()?->material 
+                ?? $mDoItems->first()?->material 
+                ?? $mRealization?->material 
+                ?? \App\Models\Material::with('defaultUnit')->find($matId);
+
+            if (!$mat) continue;
+
+            $poQty = (float) $mPoItems->sum('qty_ordered');
+            $poCost = (float) $mPoItems->sum(fn($it) => (float)$it->qty_ordered * (float)$it->unit_price);
+            $doQty = (float) $mDoItems->sum('qty_received');
+
+            $totalNonRabPoCost += $poCost;
+            $totalNonRabDoQty += $doQty;
+
+            $pos = $mPoItems->map(fn($it) => $it->purchaseOrder)->filter()->unique('id');
+            $dos = $mDoItems->map(fn($it) => $it->deliveryOrder)->filter()->unique('id');
+
+            // Fulfillment status
+            if ($poQty > 0 && $doQty >= $poQty) {
+                $statusType = 'completed';
+                $statusLabel = 'Tiba Lengkap (100%)';
+                $badgeCls = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            } elseif ($doQty > 0 && $poQty > 0) {
+                $pct = round(($doQty / $poQty) * 100, 1);
+                $statusType = 'partial';
+                $statusLabel = "Sebagian Masuk ({$pct}%)";
+                $badgeCls = 'bg-blue-100 text-blue-800 border-blue-200';
+            } elseif ($poQty > 0 && $doQty == 0) {
+                $statusType = 'pending';
+                $statusLabel = 'Menunggu Kirim (PO Sent)';
+                $badgeCls = 'bg-amber-100 text-amber-800 border-amber-200';
+            } else {
+                $statusType = 'unplanned_do';
+                $statusLabel = 'Fisik Tiba Tanpa PO';
+                $badgeCls = 'bg-purple-100 text-purple-800 border-purple-200';
+            }
+
+            $nonRabPurchases[] = [
+                'material_id' => $mat->id,
+                'material_code' => $mat->code,
+                'material_name' => $mat->name,
+                'category' => $mat->category,
+                'unit' => $mat->defaultUnit?->code ?? '-',
+                'po_qty' => $poQty,
+                'po_cost' => $poCost,
+                'avg_unit_price' => $poQty > 0 ? ($poCost / $poQty) : (float)($mat->standard_price ?? 0),
+                'do_qty' => $doQty,
+                'pos' => $pos->values()->all(),
+                'dos' => $dos->values()->all(),
+                'status_type' => $statusType,
+                'status_label' => $statusLabel,
+                'badge_cls' => $badgeCls,
+                'realization' => $mRealization,
             ];
         }
+
+        // Summary KPI stats for Non-RAB
+        $stats['non_rab_total_cost'] = $totalNonRabPoCost;
+        $stats['non_rab_items_count'] = count($nonRabPurchases);
+        $stats['non_rab_po_count'] = $nonRabPoItems->pluck('purchase_order_id')->unique()->count();
+        $stats['non_rab_do_count'] = $nonRabDoItems->pluck('delivery_order_id')->unique()->count();
+        $stats['non_rab_do_received_qty'] = $totalNonRabDoQty;
 
         return view('dashboard.index', compact(
             'projects',
@@ -164,6 +252,7 @@ class DashboardController extends Controller
             'stats',
             'realizations',
             'treeRealizations',
+            'nonRabPurchases',
             'chartCategories',
             'chartBudgets',
             'chartActuals',

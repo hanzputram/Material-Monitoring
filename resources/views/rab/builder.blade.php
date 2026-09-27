@@ -10,10 +10,12 @@
     showItemModal: false,
     showBomModal: false,
     showCloneBomModal: false,
+    showBreakdownModal: false,
     nodeModal: { parent_id: null, level: 1, levelName: 'Kategori Utama (Level 1)' },
     itemModal: { rab_node_id: null, nodeName: '' },
     bomModal: { rab_item_id: null, itemName: '', defaultUnitId: null },
-    cloneModal: { target_item_id: null, itemName: '' }
+    cloneModal: { target_item_id: null, itemName: '' },
+    breakdownModal: { material_id: null, parentName: '', parentCode: '', parentUnit: '', parentVolume: '' }
 }">
 
     <!-- Top Action Bar -->
@@ -39,6 +41,12 @@
                class="inline-flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-sm transition-all flex-1 sm:flex-initial text-center">
                 <svg class="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
                 <span>Impor Excel</span>
+            </a>
+            <a href="{{ route('materials.index') }}" 
+               class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-sm transition-all flex-1 sm:flex-initial text-center"
+               title="Buka Katalog Master Material & Satuan">
+                <svg class="w-4 h-4 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <span>Master Item</span>
             </a>
             <a href="{{ route('rab.export', $project->id) }}" 
                class="inline-flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl transition-all">
@@ -418,6 +426,96 @@
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="button" @click="showCloneBomModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
                         <button type="submit" class="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">Salin BOM Sekarang</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD MATERIAL BREAKDOWN (RINCIAN MATERIAL HASIL JADI UNTUK PURCHASING) -->
+    <div x-show="showBreakdownModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showBreakdownModal = false" aria-hidden="true"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
+            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                 @click.stop
+                 x-data="{ subVol: 1, subPrice: 0, get subTotal() { return (this.subVol * this.subPrice).toFixed(2); } }">
+                <form :action="'{{ url('/rab/materials') }}/' + breakdownModal.material_id + '/breakdown'" method="POST">
+                    @csrf
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <div>
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <span class="badge-clean bg-indigo-100 text-indigo-800 text-[10px] font-bold">Input Purchasing / Estimasi</span>
+                                <span class="text-[10px] text-slate-400">Rincian Hasil Jadi</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-900">Breakdown Komponen Material</h3>
+                            <p class="text-xs text-slate-500 font-medium mt-0.5">
+                                Induk: <span class="font-bold text-slate-800" x-text="breakdownModal.parentName"></span> 
+                                <span class="font-mono text-[11px] text-slate-400" x-text="'(' + breakdownModal.parentCode + ')'"></span>
+                                &bull; <span class="text-slate-600 font-mono" x-text="breakdownModal.parentVolume + ' ' + breakdownModal.parentUnit"></span>
+                            </p>
+                        </div>
+                        <button type="button" @click="showBreakdownModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+                    </div>
+
+                    <div class="space-y-4 text-xs">
+                        <div class="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-800 leading-relaxed flex items-start gap-2">
+                            <svg class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Gunakan rincian ini bila material pada RAB ditulis hasil jadi (misal: Bekisting Kolom, Pintu Kayu, Pasangan Bata) agar Purchasing dapat membelikan detail bahan riilnya (misal: Kayu Kaso, Multipleks, Paku).</span>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Pilih Material Rincian (Katalog) <span class="text-rose-500">*</span></label>
+                            <select name="material_id" required 
+                                    @change="
+                                        let opt = $event.target.selectedOptions[0];
+                                        subPrice = opt.getAttribute('data-price') || 0;
+                                    "
+                                    class="w-full select-clean p-2.5 bg-white text-slate-800">
+                                <option value="">-- Pilih Material Komponen Pembentuk --</option>
+                                @foreach($materials as $m)
+                                    <option value="{{ $m->id }}" data-price="{{ $m->standard_price }}">
+                                        {{ $m->name }} ({{ $m->code }}) — Ref: Rp {{ number_format($m->standard_price, 0, ',', '.') }}/{{ $m->defaultUnit?->code }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Volume Kebutuhan <span class="text-rose-500">*</span></label>
+                                <input type="number" step="any" name="volume" x-model="subVol" required 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Satuan <span class="text-rose-500">*</span></label>
+                                <select name="unit_id" required class="w-full select-clean p-2.5 bg-white text-slate-800">
+                                    @foreach($units as $u)
+                                        <option value="{{ $u->id }}">{{ $u->code }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Harga Satuan (Rp) <span class="text-rose-500">*</span></label>
+                                <input type="number" step="any" name="unit_price" x-model="subPrice" required 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Catatan / Spesifikasi Tambahan (Opsional)</label>
+                            <input type="text" name="notes" placeholder="Mis. Triplek tebal 9mm Phenolic / Paku reng 5cm" 
+                                   class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+
+                        <div class="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between">
+                            <span class="text-xs font-semibold text-indigo-900">Subtotal Nilai Rincian:</span>
+                            <span class="text-sm font-extrabold font-mono text-indigo-900" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(subTotal)"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" @click="showBreakdownModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm">Simpan Rincian Breakdown</button>
                     </div>
                 </form>
             </div>

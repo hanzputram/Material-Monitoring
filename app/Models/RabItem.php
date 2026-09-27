@@ -67,6 +67,11 @@ class RabItem extends Model
         return $this->hasMany(RabItemMaterial::class, 'rab_item_id');
     }
 
+    public function rootMaterials()
+    {
+        return $this->hasMany(RabItemMaterial::class, 'rab_item_id')->whereNull('parent_id');
+    }
+
     public function costRealization()
     {
         return $this->hasOne(CostRealization::class, 'rab_item_id');

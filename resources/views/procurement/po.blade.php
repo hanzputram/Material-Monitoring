@@ -104,11 +104,19 @@
                                 <span class="badge-clean bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">Terkirim / Aktif</span>
                             </td>
                             <td class="py-3 px-4 text-center">
-                                <button type="button" 
-                                        @click="selectedPo = {{ Js::from($po) }}; showDetailModal = true"
-                                        class="px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                                    Detail Item &rarr;
-                                </button>
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <button type="button" 
+                                            @click="selectedPo = {{ Js::from($po) }}; showDetailModal = true"
+                                            class="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
+                                        Detail &rarr;
+                                    </button>
+                                    <a href="{{ route('procurement.po.pdf', $po->id) }}" 
+                                       class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-colors"
+                                       title="Unduh Dokumen PO Resmi (PDF)">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        <span>Unduh PDF</span>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -165,7 +173,7 @@
                                     <tr>
                                         <td class="py-2.5 px-3 text-slate-500" x-text="i + 1"></td>
                                         <td class="py-2.5 px-3 font-semibold text-slate-800" x-text="it.material ? (it.material.code + ' - ' + it.material.name) : '-'"></td>
-                                        <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-800" x-text="it.qty_ordered + ' ' + (it.unit ? it.unit.code : '')"></td>
+                                        <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-800" x-text="parseFloat(it.qty_ordered).toLocaleString('id-ID', { maximumFractionDigits: 4 }) + ' ' + (it.unit ? it.unit.code : '')"></td>
                                         <td class="py-2.5 px-3 text-right font-mono text-slate-600" x-text="'Rp ' + Number(it.unit_price).toLocaleString('id-ID')"></td>
                                         <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-900" x-text="'Rp ' + (Number(it.qty_ordered) * Number(it.unit_price)).toLocaleString('id-ID')"></td>
                                     </tr>
@@ -182,7 +190,20 @@
                     </template>
                 </div>
 
-                <div class="mt-6 flex justify-end">
+                <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div class="flex items-center gap-2">
+                        <a :href="'/procurement/po/' + (selectedPo ? selectedPo.id : '') + '/pdf'" 
+                           class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-xl shadow-sm transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Unduh Dokumen PDF</span>
+                        </a>
+                        <button type="button"
+                                @click="openDocPreview('/procurement/po/' + (selectedPo ? selectedPo.id : '') + '/pdf?preview=1', 'Purchase Order (PO): ' + (selectedPo ? selectedPo.po_number : ''), true)"
+                                class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <span>Pratinjau PDF</span>
+                        </button>
+                    </div>
                     <button type="button" @click="showDetailModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Tutup</button>
                 </div>
             </div>

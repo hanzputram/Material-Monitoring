@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CostComparisonController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\ProcurementController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RabBuilderController;
@@ -41,6 +42,13 @@ Route::middleware('auth')->group(function () {
     // 3. Master Supplier & Rekanan (Modul: suppliers)
     Route::resource('suppliers', SupplierController::class)->middleware('module:suppliers');
 
+    // 3.1 Master Item, Material & Satuan (Modul: materials)
+    Route::post('materials/units', [MaterialController::class, 'storeUnit'])->name('materials.units.store');
+    Route::put('materials/units/{unit}', [MaterialController::class, 'updateUnit'])->name('materials.units.update');
+    Route::delete('materials/units/{unit}', [MaterialController::class, 'destroyUnit'])->name('materials.units.destroy');
+    Route::post('materials/{material}/toggle-status', [MaterialController::class, 'toggleStatus'])->name('materials.toggle_status');
+    Route::resource('materials', MaterialController::class);
+
     // 4. Interactive RAB Tree Builder & BOM (Modul: rab)
     Route::prefix('rab')->name('rab.')->middleware('module:rab')->group(function () {
         Route::get('/builder', [RabBuilderController::class, 'index'])->name('builder');
@@ -53,6 +61,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/items/{item}', [RabBuilderController::class, 'destroyItem'])->name('items.destroy');
 
         Route::post('/items/{item}/material', [RabBuilderController::class, 'storeItemMaterial'])->name('items.material.store');
+        Route::post('/materials/{material}/breakdown', [RabBuilderController::class, 'storeMaterialBreakdown'])->name('materials.breakdown');
         Route::delete('/materials/{material}', [RabBuilderController::class, 'destroyItemMaterial'])->name('materials.destroy');
         Route::post('/items/{item}/clone-bom', [RabBuilderController::class, 'cloneBom'])->name('items.clone_bom');
 
@@ -71,10 +80,12 @@ Route::middleware('auth')->group(function () {
         // Submodul 1: Purchase Order (PO)
         Route::get('/po', [ProcurementController::class, 'poIndex'])->middleware('module:po_read')->name('po.index');
         Route::post('/po', [ProcurementController::class, 'storePo'])->middleware('module:po_write')->name('po.store');
+        Route::get('/po/{purchaseOrder}/pdf', [ProcurementController::class, 'downloadPoPdf'])->middleware('module:po_read')->name('po.pdf');
 
         // Submodul 2: Surat Jalan (DO Lapangan)
         Route::get('/do', [ProcurementController::class, 'doIndex'])->middleware('module:do_read')->name('do.index');
         Route::post('/do', [ProcurementController::class, 'storeDo'])->middleware('module:do_write')->name('do.store');
+        Route::delete('/do/{deliveryOrder}', [ProcurementController::class, 'destroyDo'])->middleware('module:do_write')->name('do.destroy');
 
         // Submodul 3: Faktur Tagihan (Invoice)
         Route::get('/invoices', [ProcurementController::class, 'invoiceIndex'])->middleware('module:invoice_read')->name('invoices.index');
@@ -99,7 +110,12 @@ Route::middleware('auth')->group(function () {
     // 8. Equipment Master & Fast Bulk Input (Modul: equipment)
     Route::prefix('equipment')->name('equipment.')->middleware('module:equipment')->group(function () {
         Route::get('/', [EquipmentController::class, 'index'])->name('index');
+        Route::post('/master', [EquipmentController::class, 'storeMaster'])->name('master.store');
+        Route::put('/master/{equipmentMaster}', [EquipmentController::class, 'updateMaster'])->name('master.update');
+        Route::delete('/master/{equipmentMaster}', [EquipmentController::class, 'destroyMaster'])->name('master.destroy');
+        Route::post('/categories', [EquipmentController::class, 'storeCategory'])->name('categories.store');
         Route::post('/fast-bulk', [EquipmentController::class, 'fastBulkStore'])->name('fast_bulk');
+        Route::put('/project/{equipment}', [EquipmentController::class, 'updateProjectEquipment'])->name('project.update');
         Route::delete('/project/{equipment}', [EquipmentController::class, 'destroyProjectEquipment'])->name('project.destroy');
     });
 
@@ -112,3 +128,16 @@ Route::middleware('auth')->group(function () {
     // Opsional: Role switcher untuk testing jika masih dibutuhkan oleh superadmin
     Route::post('/role/switch', [RoleSimulationController::class, 'switchRole'])->name('role.switch');
 });
+
+// Fallback direct route untuk melayani file bukti fisik dari storage/app/public jika symlink terkendala
+Route::get('/storage/{path}', function (string $path) {
+    $cleanPath = str_replace(['..', "\0"], '', $path);
+    $fullPath = storage_path('app/public/' . $cleanPath);
+
+    if (!file_exists($fullPath) || is_dir($fullPath)) {
+        abort(404, 'File lampiran atau bukti fisik tidak ditemukan.');
+    }
+
+    return response()->file($fullPath);
+})->where('path', '.*')->name('storage.fallback');
+

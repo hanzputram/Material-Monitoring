@@ -84,6 +84,9 @@
                         <th class="py-3 px-4 text-center">Bukti Fisik</th>
                         <th class="py-3 px-4">Penerima</th>
                         <th class="py-3 px-4 text-center">Status</th>
+                        @if(auth()->user()?->canWriteDo())
+                            <th class="py-3 px-4 text-center w-20">Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -100,7 +103,7 @@
                                             <span class="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
                                             <span class="font-bold text-slate-800">{{ $it->material?->name ?? 'Material' }}</span>
                                             <span class="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[11px] font-semibold">
-                                                {{ $it->qty_received }} {{ $it->material?->defaultUnit?->code ?? '' }}
+                                                {{ format_qty($it->qty_received) }} {{ $it->material?->defaultUnit?->code ?? '' }}
                                             </span>
                                         </div>
                                     @endforeach
@@ -108,11 +111,12 @@
                             </td>
                             <td class="py-3 px-4 text-center">
                                 @if($do->attachment_path)
-                                    <a href="{{ asset('storage/' . $do->attachment_path) }}" target="_blank" 
-                                       class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                                    <button type="button" 
+                                            onclick="openDocPreview('{{ asset('storage/' . $do->attachment_path) }}', 'Surat Jalan (DO): {{ addslashes($do->do_number) }}')"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                                         <span>Lihat Scan</span>
-                                    </a>
+                                    </button>
                                 @else
                                     <span class="text-slate-400 italic text-[11px]">Tanpa lampiran</span>
                                 @endif
@@ -121,6 +125,21 @@
                             <td class="py-3 px-4 text-center">
                                 <span class="badge-clean bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">Terverifikasi Lapangan</span>
                             </td>
+                            @if(auth()->user()?->canWriteDo())
+                                <td class="py-3 px-4 text-center">
+                                    <form action="{{ route('procurement.do.destroy', $do->id) }}" method="POST" 
+                                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus Surat Jalan {{ $do->do_number }}? Seluruh kuota realisasi material terkait akan dikalkulasi ulang.');"
+                                          class="inline-block">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" 
+                                                class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+                                                title="Hapus Surat Jalan">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </form>
+                                </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>

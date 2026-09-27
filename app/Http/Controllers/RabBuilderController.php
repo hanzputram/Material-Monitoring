@@ -27,13 +27,22 @@ class RabBuilderController extends Controller
         $units = Unit::orderBy('name')->get();
         $materials = Material::where('is_active', true)->orderBy('name')->get();
 
-        // Eager load 5 levels
+        // Eager load 5 levels plus sub-breakdown materials
         $rootNodes = RabNode::with([
-            'children.children.rabItems.materials.material',
+            'children.children.rabItems.materials.material.defaultUnit',
+            'children.children.rabItems.materials.breakdowns.material.defaultUnit',
+            'children.children.rabItems.materials.breakdowns.unit',
+            'children.children.rabItems.materials.unit',
             'children.children.rabItems.unit',
-            'children.rabItems.materials.material',
+            'children.rabItems.materials.material.defaultUnit',
+            'children.rabItems.materials.breakdowns.material.defaultUnit',
+            'children.rabItems.materials.breakdowns.unit',
+            'children.rabItems.materials.unit',
             'children.rabItems.unit',
-            'rabItems.materials.material',
+            'rabItems.materials.material.defaultUnit',
+            'rabItems.materials.breakdowns.material.defaultUnit',
+            'rabItems.materials.breakdowns.unit',
+            'rabItems.materials.unit',
             'rabItems.unit',
         ])
         ->where('project_id', $project->id)
@@ -183,14 +192,43 @@ class RabBuilderController extends Controller
             ->with('success', "Material dasar berhasil ditambahkan ke item '{$item->name}'!");
     }
 
+    /**
+     * Simpan rincian breakdown material (misal untuk material hasil jadi / composite)
+     */
+    public function storeMaterialBreakdown(Request $request, RabItemMaterial $material)
+    {
+        $validated = $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'volume' => 'required|numeric|min:0.0001',
+            'unit_id' => 'required|exists:units,id',
+            'unit_price' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:255',
+        ], [
+            'material_id.required' => 'Pilih material rincian dasar dari katalog.',
+            'volume.required' => 'Masukkan volume kebutuhan rincian.',
+            'unit_id.required' => 'Pilih satuan kuantiti.',
+            'unit_price.required' => 'Masukkan estimasi harga satuan.',
+        ]);
+
+        $validated['rab_item_id'] = $material->rab_item_id;
+        $validated['parent_id'] = $material->id;
+        $validated['total_price'] = (float) $validated['volume'] * (float) $validated['unit_price'];
+        $validated['input_by'] = Auth::id();
+
+        $sub = RabItemMaterial::create($validated);
+
+        return redirect()->back()
+            ->with('success', "Rincian breakdown '{$sub->material?->name}' berhasil ditambahkan ke material hasil jadi '{$material->material?->name}'!");
+    }
+
     public function destroyItemMaterial(RabItemMaterial $material)
     {
         $item = $material->rabItem;
-        $projectId = $item->rabNode->project_id;
+        $name = $material->material?->name ?? 'Material';
         $material->delete();
 
-        return redirect()->route('rab.builder', ['project_id' => $projectId])
-            ->with('success', "Breakdown material berhasil dihapus.");
+        return redirect()->back()
+            ->with('success', "Breakdown material '{$name}' berhasil dihapus.");
     }
 
     public function cloneBom(Request $request, RabItem $item)

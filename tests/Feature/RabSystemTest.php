@@ -35,6 +35,11 @@ class RabSystemTest extends TestCase
             MaterialMasterSeeder::class,
             SampleProjectSeeder::class,
         ]);
+
+        $superadmin = User::where('email', 'superadmin@sirisolab.com')->first();
+        if ($superadmin) {
+            $this->actingAs($superadmin);
+        }
     }
 
     public function test_dashboard_loads_with_active_project()
@@ -98,4 +103,56 @@ class RabSystemTest extends TestCase
             'source' => 'sewa',
         ]);
     }
+
+    public function test_equipment_master_crud_and_pricing()
+    {
+        $cat = EquipmentCategory::where('name', 'Mesin')->first();
+        $unit = Unit::where('code', 'Unit')->first();
+
+        // 1. Create equipment with price
+        $response = $this->post(route('equipment.master.store'), [
+            'equipment_category_id' => $cat->id,
+            'name' => 'Mesin Molen Mini 250L',
+            'code' => 'EQP-MSN-999',
+            'default_unit_id' => $unit->id,
+            'price' => 250000,
+            'spec' => 'Kapasitas 0.5 sak mesin bensin',
+            'is_active' => 1,
+        ]);
+
+        $response->assertRedirect(route('equipment.index', ['tab' => 'master']));
+        $this->assertDatabaseHas('equipment_master', [
+            'code' => 'EQP-MSN-999',
+            'name' => 'Mesin Molen Mini 250L',
+            'price' => 250000,
+        ]);
+
+        $created = EquipmentMaster::where('code', 'EQP-MSN-999')->first();
+
+        // 2. Update equipment price and spec
+        $updateResponse = $this->put(route('equipment.master.update', $created->id), [
+            'equipment_category_id' => $cat->id,
+            'name' => 'Mesin Molen Mini 250L Upgraded',
+            'code' => 'EQP-MSN-999',
+            'default_unit_id' => $unit->id,
+            'price' => 275000,
+            'spec' => 'Kapasitas 0.5 sak mesin bensin Honda',
+            'is_active' => 1,
+        ]);
+
+        $updateResponse->assertRedirect(route('equipment.index', ['tab' => 'master']));
+        $this->assertDatabaseHas('equipment_master', [
+            'id' => $created->id,
+            'name' => 'Mesin Molen Mini 250L Upgraded',
+            'price' => 275000,
+        ]);
+
+        // 3. Delete equipment
+        $deleteResponse = $this->delete(route('equipment.master.destroy', $created->id));
+        $deleteResponse->assertRedirect(route('equipment.index', ['tab' => 'master']));
+        $this->assertDatabaseMissing('equipment_master', [
+            'id' => $created->id,
+        ]);
+    }
 }
+

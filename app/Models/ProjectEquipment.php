@@ -12,6 +12,7 @@ class ProjectEquipment extends Model
         'project_id',
         'equipment_master_id',
         'qty',
+        'rental_rate',
         'source', // milik_sendiri, sewa
         'condition', // baru, layak_pakai, perlu_perbaikan
         'added_by',
@@ -20,6 +21,7 @@ class ProjectEquipment extends Model
 
     protected $casts = [
         'qty' => 'integer',
+        'rental_rate' => 'decimal:2',
     ];
 
     public function project()

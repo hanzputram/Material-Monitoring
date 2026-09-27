@@ -13,11 +13,13 @@ class EquipmentMaster extends Model
         'code',
         'name',
         'default_unit_id',
+        'price',
         'spec',
         'is_active',
     ];
 
     protected $casts = [
+        'price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 

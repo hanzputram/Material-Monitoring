@@ -12,6 +12,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
 use App\Models\Unit;
+use App\Services\PurchaseOrderPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -141,6 +142,27 @@ class ProcurementController extends Controller
             ->with('success', "Purchase Order {$po->po_number} berhasil dibuat!");
     }
 
+    /**
+     * Unduh atau pratinjau dokumen Purchase Order resmi format PDF
+     */
+    public function downloadPoPdf(Request $request, PurchaseOrder $purchaseOrder, PurchaseOrderPdfService $pdfService)
+    {
+        if (!Auth::user()->canReadPo()) {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk mengunduh Purchase Order.');
+        }
+
+        $pdf = $pdfService->generate($purchaseOrder);
+
+        $cleanPoNumber = preg_replace('/[^A-Za-z0-9\-_]/', '_', $purchaseOrder->po_number);
+        $filename = "PO_{$cleanPoNumber}.pdf";
+
+        if ($request->has('stream') || $request->has('preview')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
+    }
+
     // ============================================================
     // 2. SUBMODUL SURAT JALAN (DO LAPANGAN)
     // ============================================================
@@ -236,6 +258,36 @@ class ProcurementController extends Controller
 
         return redirect()->route('procurement.do.index', ['project_id' => $do->project_id])
             ->with('success', "Surat Jalan (DO) {$do->do_number} dan bukti fisik berhasil dicatat!");
+    }
+
+    public function destroyDo(Request $request, DeliveryOrder $deliveryOrder)
+    {
+        if (!Auth::user()->canWriteDo()) {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk menghapus Surat Jalan (DO).');
+        }
+
+        $projectId = $deliveryOrder->project_id;
+        $doNumber = $deliveryOrder->do_number;
+
+        // Delete variance validations linked to this DO
+        $deliveryOrder->varianceValidations()->delete();
+
+        // Delete items
+        $deliveryOrder->items()->delete();
+
+        // Delete attachment if stored
+        if ($deliveryOrder->attachment_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($deliveryOrder->attachment_path)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($deliveryOrder->attachment_path);
+        }
+
+        // Delete DO
+        $deliveryOrder->delete();
+
+        // Recalculate realizations
+        MaterialRealization::recalculateAllForProject($projectId);
+
+        return redirect()->route('procurement.do.index', ['project_id' => $projectId])
+            ->with('success', "Surat Jalan (DO) {$doNumber} berhasil dihapus dan kuota realisasi telah diperbarui.");
     }
 
     // ============================================================

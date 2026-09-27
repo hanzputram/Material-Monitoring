@@ -21,4 +21,14 @@ class Unit extends Model
     {
         return $this->hasMany(Material::class, 'default_unit_id');
     }
+
+    public function rabItems()
+    {
+        return $this->hasMany(RabItem::class);
+    }
+
+    public function rabItemMaterials()
+    {
+        return $this->hasMany(RabItemMaterial::class);
+    }
 }

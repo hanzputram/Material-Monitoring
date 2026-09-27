@@ -160,7 +160,7 @@
             @endif
 
             <!-- GROUP 3: PENGADAAN & LAPANGAN -->
-            @if(auth()->user()?->canReadPo() || auth()->user()?->canReadDo() || auth()->user()?->canReadInvoice() || auth()->user()?->hasModulePermission('suppliers') || auth()->user()?->hasModulePermission('variance'))
+            @if(auth()->user()?->canReadPo() || auth()->user()?->canReadDo() || auth()->user()?->canReadInvoice() || auth()->user()?->hasModulePermission('suppliers') || auth()->user()?->hasModulePermission('materials') || auth()->user()?->hasModulePermission('variance'))
                 <div>
                     <p class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pengadaan & Lapangan</p>
                     <div class="space-y-1">
@@ -207,6 +207,16 @@
                             </a>
                         @endif
 
+                        @if(auth()->user()?->hasModulePermission('materials') || auth()->user()?->hasModulePermission('suppliers') || auth()->user()?->hasModulePermission('rab'))
+                            <a href="{{ route('materials.index') }}" 
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('materials.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                                <svg class="w-5 h-5 {{ request()->routeIs('materials.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                </svg>
+                                <span>Master Item & Material</span>
+                            </a>
+                        @endif
+
                         @if(auth()->user()?->hasModulePermission('variance'))
                             <a href="{{ route('variance.index') }}" 
                                class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('variance.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
@@ -240,7 +250,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
-                                Alat & Mesin (Fast Input)
+                                Master Alat & Mesin
                             </a>
                         @endif
 
@@ -505,6 +515,138 @@
             </div>
         </div>
     </div>
+
+    <!-- GLOBAL DOCUMENT PREVIEW MODAL (POP-UP) -->
+    <div x-data="{
+            open: false,
+            url: '',
+            title: '',
+            isPdf: false,
+            showPreview(event) {
+                this.url = event.detail.url;
+                this.title = event.detail.title || 'Bukti Fisik';
+                if (event.detail.isPdf !== null && typeof event.detail.isPdf !== 'undefined') {
+                    this.isPdf = Boolean(event.detail.isPdf);
+                } else {
+                    const cleanUrl = this.url.split('?')[0].toLowerCase();
+                    this.isPdf = cleanUrl.endsWith('.pdf') || cleanUrl.endsWith('/pdf') || cleanUrl.includes('.pdf') || cleanUrl.includes('/pdf');
+                }
+                this.open = true;
+            },
+            closePreview() {
+                this.open = false;
+                setTimeout(() => {
+                    if (!this.open) {
+                        this.url = '';
+                        this.title = '';
+                    }
+                }, 300);
+            }
+        }"
+        @open-doc-preview.window="showPreview($event)"
+        @keydown.escape.window="closePreview()"
+        x-cloak>
+
+        <!-- Backdrop -->
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="closePreview()"
+             class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[9990]"></div>
+
+        <!-- Modal Dialog Container -->
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+             x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+             class="fixed inset-0 z-[9995] flex items-center justify-center p-3 sm:p-5 md:p-8">
+
+            <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden"
+                 @click.outside="closePreview()">
+
+                <!-- Modal Header -->
+                <div class="px-5 py-3.5 border-b border-slate-200 bg-white flex items-center justify-between gap-3 flex-shrink-0">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                             :class="isPdf ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'">
+                            <template x-if="isPdf">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            </template>
+                            <template x-if="!isPdf">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </template>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-sm font-bold text-slate-900 truncate" x-text="title || 'Pratinjau Bukti Fisik'"></h3>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0"
+                                      :class="isPdf ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200'"
+                                      x-text="isPdf ? 'PDF Dokumen' : 'Gambar / Foto'"></span>
+                            </div>
+                            <p class="text-xs text-slate-500 truncate" x-text="url"></p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <a :href="url" download
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                           title="Unduh Berkas">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span class="hidden sm:inline">Unduh</span>
+                        </a>
+                        <button type="button" @click="closePreview()"
+                                class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors text-lg font-bold"
+                                title="Tutup (Esc)">
+                            &times;
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body: File Viewer -->
+                <div class="flex-1 bg-slate-900/5 relative overflow-hidden flex items-center justify-center">
+                    <!-- PDF Viewer -->
+                    <template x-if="open && isPdf">
+                        <iframe :src="url" 
+                                class="w-full h-full border-0 bg-white"
+                                frameborder="0"></iframe>
+                    </template>
+
+                    <!-- Image Viewer -->
+                    <template x-if="open && !isPdf">
+                        <div class="w-full h-full overflow-auto flex items-center justify-center p-4">
+                            <img :src="url" 
+                                 :alt="title"
+                                 class="max-h-full max-w-full object-contain rounded-xl shadow-md border border-slate-200/60 bg-white" />
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-5 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
+                    <span class="text-[11px] text-slate-400">Tekan <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono text-[10px]">Esc</kbd> atau klik di luar untuk menutup pop-up.</span>
+                    <button type="button" @click="closePreview()" 
+                            class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition-colors text-xs">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.openDocPreview = function(url, title = 'Bukti Fisik', isPdf = null) {
+            window.dispatchEvent(new CustomEvent('open-doc-preview', {
+                detail: { url, title, isPdf }
+            }));
+        };
+    </script>
 
     @stack('scripts')
 </body>

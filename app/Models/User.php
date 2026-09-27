@@ -234,6 +234,11 @@ class User extends Authenticatable
                 'category' => 'Perencanaan & Master',
                 'description' => 'Menyusun hierarki pekerjaan (Level 1-4) dan memecah material dasar (Level 5 BOM).',
             ],
+            'materials' => [
+                'name' => 'Master Item & Material',
+                'category' => 'Perencanaan & Master',
+                'description' => 'Mengelola katalog master item material konstruksi, kode item, satuan standar, kategori, dan estimasi harga.',
+            ],
             // Pemisahan Form PO, DO, dan Invoice dengan Hak Akses Read vs Write
             'po_read' => [
                 'name' => 'Purchase Order (PO) — Lihat Saja (Read)',
@@ -301,13 +306,13 @@ class User extends Authenticatable
         return match (strtolower(str_replace([' ', '-', '_'], '', $role))) {
             'superadmin' => ['*'],
             'projectmanager' => [
-                'dashboard', 'cost', 'projects', 'rab', 'po_read', 'po_write', 'do_read', 'do_write', 'invoice_read', 'invoice_write', 'suppliers', 'variance', 'equipment', 'alerts'
+                'dashboard', 'cost', 'projects', 'rab', 'materials', 'po_read', 'po_write', 'do_read', 'do_write', 'invoice_read', 'invoice_write', 'suppliers', 'variance', 'equipment', 'alerts'
             ],
             'pengawaslapangan', 'pengawas' => [
                 'dashboard', 'projects', 'rab', 'po_read', 'do_read', 'do_write', 'invoice_read', 'variance', 'equipment', 'alerts'
             ],
             'purchasing' => [
-                'dashboard', 'cost', 'rab', 'po_read', 'po_write', 'do_read', 'invoice_read', 'invoice_write', 'suppliers', 'variance', 'alerts'
+                'dashboard', 'cost', 'rab', 'materials', 'po_read', 'po_write', 'do_read', 'invoice_read', 'invoice_write', 'suppliers', 'variance', 'alerts'
             ],
             'financedireksi', 'direksi', 'finance' => [
                 'dashboard', 'cost', 'po_read', 'do_read', 'invoice_read', 'variance', 'alerts'

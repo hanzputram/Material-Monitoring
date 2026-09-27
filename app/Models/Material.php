@@ -12,6 +12,8 @@ class Material extends Model
         'category',
         'default_unit_id',
         'standard_price',
+        'specification',
+        'notes',
         'is_active',
     ];
 
@@ -33,6 +35,16 @@ class Material extends Model
     public function rabItemMaterials()
     {
         return $this->hasMany(RabItemMaterial::class);
+    }
+
+    public function purchaseOrderItems()
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function deliveryOrderItems()
+    {
+        return $this->hasMany(DeliveryOrderItem::class);
     }
 
     public function realizations()

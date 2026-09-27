@@ -224,7 +224,7 @@
                                     <div class="flex items-center justify-between text-[11px]">
                                         <span class="font-bold text-slate-600">Realisasi Fisik:</span>
                                         <span class="font-black font-mono {{ $isOver ? 'text-rose-600' : ($actual == 0 ? 'text-slate-400' : 'text-blue-700') }}">
-                                            {{ number_format($actual, 2, ',', '.') }} / {{ number_format($planned, 2, ',', '.') }} {{ $unit }}
+                                            {{ format_qty($actual) }} / {{ format_qty($planned) }} {{ $unit }}
                                             <span class="ml-1 text-[10px] px-1 py-0.2 rounded font-extrabold {{ $isOver ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-700' }}">{{ $pct }}%</span>
                                         </span>
                                     </div>
@@ -244,12 +244,12 @@
                                         <span class="text-slate-400 font-medium">Deviasi Fisik:</span>
                                         @if($isOver)
                                             <span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-extrabold text-[11px]">
-                                                +{{ number_format($rel->variance_qty, 2, ',', '.') }} {{ $unit }} (+{{ number_format($rel->variance_pct, 1, ',', '.') }}%)
+                                                +{{ format_qty($rel->variance_qty) }} {{ $unit }} (+{{ number_format($rel->variance_pct, 1, ',', '.') }}%)
                                             </span>
                                         @elseif($actual == 0)
-                                            <span class="text-slate-400 font-mono font-semibold">-{{ number_format($planned, 2, ',', '.') }} {{ $unit }}</span>
+                                            <span class="text-slate-400 font-mono font-semibold">-{{ format_qty($planned) }} {{ $unit }}</span>
                                         @else
-                                            <span class="text-amber-700 font-mono font-bold">{{ number_format($rel->variance_qty, 2, ',', '.') }} {{ $unit }}</span>
+                                            <span class="text-amber-700 font-mono font-bold">{{ format_qty($rel->variance_qty) }} {{ $unit }}</span>
                                         @endif
                                     </div>
                                 </div>

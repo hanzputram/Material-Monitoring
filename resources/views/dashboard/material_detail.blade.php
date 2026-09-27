@@ -108,7 +108,7 @@
         <div class="mt-6 pt-6 border-t border-slate-100">
             <div class="flex items-center justify-between text-xs mb-2">
                 <span class="font-bold text-slate-700">Kemajuan Penerimaan Fisik di Lapangan</span>
-                <span class="text-slate-500">Target Kuota RAB: <strong class="font-mono text-slate-800">{{ number_format($planned, 2, ',', '.') }} {{ $unit }}</strong></span>
+                <span class="text-slate-500">Target Kuota RAB: <strong class="font-mono text-slate-800">{{ format_qty($planned) }} {{ $unit }}</strong></span>
             </div>
             <div class="w-full bg-slate-200/80 rounded-full h-4 p-0.5 overflow-hidden flex relative shadow-inner">
                 @if($evalType === 'over')
@@ -125,8 +125,8 @@
                 @endif
             </div>
             <div class="flex items-center justify-between text-xs text-slate-500 mt-2">
-                <span>Total Fisik Masuk: <strong class="font-mono font-bold text-slate-900">{{ number_format($actual, 2, ',', '.') }} {{ $unit }}</strong></span>
-                <span>Selisih: <strong class="font-mono font-bold {{ $realization->variance_qty > 0 ? 'text-rose-600' : ($realization->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">{{ $realization->variance_qty > 0 ? '+' : '' }}{{ number_format($realization->variance_qty, 2, ',', '.') }} {{ $unit }}</strong></span>
+                <span>Total Fisik Masuk: <strong class="font-mono font-bold text-slate-900">{{ format_qty($actual) }} {{ $unit }}</strong></span>
+                <span>Selisih: <strong class="font-mono font-bold {{ $realization->variance_qty > 0 ? 'text-rose-600' : ($realization->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">{{ $realization->variance_qty > 0 ? '+' : '' }}{{ format_qty($realization->variance_qty) }} {{ $unit }}</strong></span>
             </div>
         </div>
     </div>
@@ -137,7 +137,7 @@
         <div class="card-clean p-5">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">1. Rencana Kuota RAB</span>
             <div class="text-2xl font-black text-slate-900 font-mono">
-                {{ number_format($planned, 2, ',', '.') }}
+                {{ format_qty($planned) }}
             </div>
             <span class="text-xs font-bold text-slate-500">{{ $unit }} dialokasikan pada BOM</span>
         </div>
@@ -146,7 +146,7 @@
         <div class="card-clean p-5">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">2. Realisasi Fisik (DO)</span>
             <div class="text-2xl font-black font-mono {{ $actual > 0 ? 'text-blue-700' : 'text-slate-400' }}">
-                {{ number_format($actual, 2, ',', '.') }}
+                {{ format_qty($actual) }}
             </div>
             <span class="text-xs font-bold text-slate-500">{{ $unit }} diterima Pengawas</span>
         </div>
@@ -155,7 +155,7 @@
         <div class="card-clean p-5">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">3. Selisih Fisik (Variance)</span>
             <div class="text-2xl font-black font-mono {{ $realization->variance_qty > 0 ? 'text-rose-600' : ($realization->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">
-                {{ $realization->variance_qty > 0 ? '+' : '' }}{{ number_format($realization->variance_qty, 2, ',', '.') }}
+                {{ $realization->variance_qty > 0 ? '+' : '' }}{{ format_qty($realization->variance_qty) }}
             </div>
             <span class="text-xs font-bold {{ $realization->variance_qty > 0 ? 'text-rose-600' : ($realization->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">
                 {{ $unit }} ({{ $realization->variance_pct > 0 ? '+' : '' }}{{ number_format($realization->variance_pct, 1, ',', '.') }}%)
@@ -216,7 +216,7 @@
                                 {{ $item->deliveryOrder->supplier->name ?? '—' }}
                             </td>
                             <td class="py-3.5 px-5 text-right font-mono font-black text-xs text-slate-900">
-                                {{ number_format($item->qty_received, 2, ',', '.') }} {{ $item->unit->code ?? $unit }}
+                                {{ format_qty($item->qty_received) }} {{ $item->unit->code ?? $unit }}
                             </td>
                             <td class="py-3.5 px-5 text-xs text-slate-600">
                                 {{ $item->deliveryOrder->receiver->name ?? 'Pengawas Lapangan' }}
@@ -412,10 +412,10 @@
                                 {{ $alloc->rabItem->name }}
                             </td>
                             <td class="py-3.5 px-5 text-right font-mono text-xs text-slate-700">
-                                {{ number_format($alloc->rabItem->volume, 2, ',', '.') }} {{ $alloc->rabItem->unit->code ?? '' }}
+                                {{ format_qty($alloc->rabItem->volume) }} {{ $alloc->rabItem->unit->code ?? '' }}
                             </td>
                             <td class="py-3.5 px-5 text-right font-mono font-bold text-xs text-blue-700">
-                                {{ number_format($alloc->volume, 2, ',', '.') }} {{ $alloc->unit->code ?? $unit }}
+                                {{ format_qty($alloc->volume) }} {{ $alloc->unit->code ?? $unit }}
                             </td>
                             <td class="py-3.5 px-5 text-right font-mono text-xs text-slate-600">
                                 Rp {{ number_format($alloc->unit_price, 0, ',', '.') }}

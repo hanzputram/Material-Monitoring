@@ -321,6 +321,9 @@ class SampleProjectSeeder extends Seeder
             ]
         );
 
+        // Pastikan dummy file bukti fisik tersedia di storage
+        $this->ensureSampleAttachmentsExist();
+
         // DO received by Pengawas Lapangan
         $do1 = DeliveryOrder::updateOrCreate(
             ['do_number' => 'DO/BPS/2026-0891'],
@@ -359,6 +362,53 @@ class SampleProjectSeeder extends Seeder
                 'notes' => 'Sesuai dengan Surat Jalan DO/BPS/2026-0891',
             ]
         );
+
+        // Non-RAB Purchase Sample (Pembelian di Luar RAB): Kawat Bendrat Pengikat Bekisting
+        $matKawatBendrat = Material::where('code', 'MAT-BSI-005')->first();
+        if ($matKawatBendrat) {
+            $poNonRab = PurchaseOrder::updateOrCreate(
+                ['po_number' => 'PO/2026/BR/002'],
+                [
+                    'project_id' => $project->id,
+                    'supplier_id' => $sup2->id,
+                    'po_date' => Carbon::now()->subDays(6),
+                    'status' => 'sent',
+                    'created_by' => $purchasingUser?->id,
+                    'notes' => 'Pengadaan darurat di luar RAB: Kawat bendrat perkuatan bekisting kolom tambahan.',
+                ]
+            );
+
+            PurchaseOrderItem::updateOrCreate(
+                ['purchase_order_id' => $poNonRab->id, 'material_id' => $matKawatBendrat->id],
+                [
+                    'qty_ordered' => 100,
+                    'unit_id' => $unitKg,
+                    'unit_price' => 24000,
+                ]
+            );
+
+            $doNonRab = DeliveryOrder::updateOrCreate(
+                ['do_number' => 'DO/BPS/2026-0912'],
+                [
+                    'project_id' => $project->id,
+                    'purchase_order_id' => $poNonRab->id,
+                    'supplier_id' => $sup2->id,
+                    'do_date' => Carbon::now()->subDays(3),
+                    'attachment_path' => 'attachments/do_sample_surat_jalan.pdf',
+                    'received_by' => $pengawasUser?->id,
+                    'status' => 'validated',
+                    'notes' => 'Barang tiba di lapangan dan diverifikasi sesuai fisik pengiriman.',
+                ]
+            );
+
+            DeliveryOrderItem::updateOrCreate(
+                ['delivery_order_id' => $doNonRab->id, 'material_id' => $matKawatBendrat->id],
+                [
+                    'qty_received' => 100,
+                    'unit_id' => $unitKg,
+                ]
+            );
+        }
 
         // Trigger Realization and Variance calculation
         MaterialRealization::recalculateAllForProject($project->id);
@@ -415,5 +465,75 @@ class SampleProjectSeeder extends Seeder
                 ['qty' => 1, 'source' => 'milik_sendiri', 'condition' => 'baru', 'added_by' => $pengawasUser?->id, 'notes' => 'Alat ukur bowplank & elevasi']
             );
         }
+    }
+
+    /**
+     * Membuat dummy PDF bukti fisik (Surat Jalan & Invoice) untuk demo jika belum tersedia di disk
+     */
+    protected function ensureSampleAttachmentsExist(): void
+    {
+        $dir = storage_path('app/public/attachments');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+
+        $doFile = $dir . '/do_sample_surat_jalan.pdf';
+        if (!file_exists($doFile)) {
+            file_put_contents($doFile, $this->buildMinimalPdf([
+                'SURAT JALAN / DELIVERY ORDER (DO)',
+                'Nomor: DO/BPS/2026-0891',
+                'Tanggal: 19 September 2026',
+                'Supplier: PT Baja Prima Steel',
+                'Item: Besi Beton Ulir D16 (6.800 Kg)',
+                'Status: Diterima & Diverifikasi Lapangan',
+            ]));
+        }
+
+        $invFile = $dir . '/inv_sample_faktur.pdf';
+        if (!file_exists($invFile)) {
+            file_put_contents($invFile, $this->buildMinimalPdf([
+                'FAKTUR TAGIHAN / INVOICE',
+                'Nomor: INV/BPS/26/0442',
+                'Tanggal: 22 September 2026',
+                'Supplier: PT Baja Prima Steel',
+                'Nominal: Rp 132.600.000',
+                'Status: Terverifikasi Purchasing',
+            ]));
+        }
+    }
+
+    /**
+     * Helper untuk membuat binary PDF standar yang valid
+     */
+    protected function buildMinimalPdf(array $lines): string
+    {
+        $objects = [];
+        $objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+        $objects[2] = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+        $objects[3] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>';
+
+        $stream = "BT\n/F1 16 Tf\n50 780 Td\n";
+        foreach ($lines as $line) {
+            $stream .= "(" . addcslashes($line, "()\\") . ") Tj\n0 -25 Td\n";
+        }
+        $stream .= "ET";
+        $objects[4] = '<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream";
+        $objects[5] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+
+        $out = "%PDF-1.4\n";
+        $offsets = [];
+        foreach ($objects as $id => $obj) {
+            $offsets[$id] = strlen($out);
+            $out .= "$id 0 obj\n$obj\nendobj\n";
+        }
+        $xrefOffset = strlen($out);
+        $out .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $out .= "0000000000 65535 f \n";
+        for ($i = 1; $i <= count($objects); $i++) {
+            $out .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        }
+        $out .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $out .= "startxref\n$xrefOffset\n%%EOF\n";
+        return $out;
     }
 }

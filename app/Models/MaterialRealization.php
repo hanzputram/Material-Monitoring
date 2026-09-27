@@ -41,6 +41,20 @@ class MaterialRealization extends Model
         return $this->hasMany(MaterialVarianceValidation::class);
     }
 
+    public function getEvalTypeAttribute(): string
+    {
+        $actual = (float) $this->actual_qty;
+        $planned = (float) $this->planned_qty;
+        if ($this->status === 'kelebihan' || $actual > $planned) {
+            return 'over';
+        } elseif ($actual == 0) {
+            return 'pending';
+        } elseif ($actual < $planned) {
+            return 'partial';
+        }
+        return 'normal';
+    }
+
     public static function recalculateForProjectMaterial(int $projectId, int $materialId): self
     {
         $project = Project::find($projectId);
@@ -51,9 +65,12 @@ class MaterialRealization extends Model
         }
 
         // 1. Calculate planned_qty from rab_item_materials in this project
-        $plannedQty = (float) RabItemMaterial::whereHas('rabItem.rabNode', function ($query) use ($projectId) {
-            $query->where('project_id', $projectId);
-        })->where('material_id', $materialId)->sum('volume');
+        // Hanya hitung material daun (leaf), jika suatu material hasil jadi sudah di-breakdown,
+        // rincian komponen breakdown-lah yang dihitung kuotanya.
+        $plannedQty = (float) RabItemMaterial::whereDoesntHave('breakdowns')
+            ->whereHas('rabItem.rabNode', function ($query) use ($projectId) {
+                $query->where('project_id', $projectId);
+            })->where('material_id', $materialId)->sum('volume');
 
         // 2. Calculate actual_qty from validated delivery orders
         $actualQty = (float) DeliveryOrderItem::whereHas('deliveryOrder', function ($query) use ($projectId) {
@@ -131,9 +148,10 @@ class MaterialRealization extends Model
     public static function recalculateAllForProject(int $projectId): void
     {
         // Get all materials used in this project's RAB or DOs
-        $materialIdsFromRab = RabItemMaterial::whereHas('rabItem.rabNode', function ($query) use ($projectId) {
-            $query->where('project_id', $projectId);
-        })->pluck('material_id')->toArray();
+        $materialIdsFromRab = RabItemMaterial::whereDoesntHave('breakdowns')
+            ->whereHas('rabItem.rabNode', function ($query) use ($projectId) {
+                $query->where('project_id', $projectId);
+            })->pluck('material_id')->toArray();
 
         $materialIdsFromDo = DeliveryOrderItem::whereHas('deliveryOrder', function ($query) use ($projectId) {
             $query->where('project_id', $projectId);
@@ -143,6 +161,21 @@ class MaterialRealization extends Model
 
         foreach ($allMaterialIds as $materialId) {
             self::recalculateForProjectMaterial($projectId, $materialId);
+        }
+
+        // Clean up orphaned realizations no longer in either RAB or DO
+        $orphans = self::where('project_id', $projectId)
+            ->whereNotIn('material_id', $allMaterialIds)
+            ->get();
+
+        foreach ($orphans as $orphan) {
+            Alert::where('project_id', $projectId)
+                ->where('reference_type', self::class)
+                ->where('reference_id', $orphan->id)
+                ->delete();
+
+            $orphan->varianceValidations()->delete();
+            $orphan->delete();
         }
     }
 }

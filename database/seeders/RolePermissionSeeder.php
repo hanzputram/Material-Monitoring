@@ -78,30 +78,42 @@ class RolePermissionSeeder extends Seeder
         $users = [
             [
                 'name' => 'Super Administrator',
+                'username' => 'superadmin',
+                'email' => 'superadmin@sirisolab.com',
+                'password' => Hash::make('Hanz72006#'),
+                'role' => 'Super Admin',
+            ],
+            [
+                'name' => 'Administrator Sistem',
+                'username' => 'admin',
                 'email' => 'admin@konstruksi.id',
                 'password' => Hash::make('password'),
                 'role' => 'Super Admin',
             ],
             [
                 'name' => 'Budi Santoso, ST (Project Manager)',
+                'username' => 'pm',
                 'email' => 'pm@konstruksi.id',
                 'password' => Hash::make('password'),
                 'role' => 'Project Manager',
             ],
             [
                 'name' => 'Agus Priyono (Pengawas Lapangan)',
+                'username' => 'pengawas',
                 'email' => 'pengawas@konstruksi.id',
                 'password' => Hash::make('password'),
                 'role' => 'Pengawas Lapangan',
             ],
             [
                 'name' => 'Dewi Lestari (Purchasing Officer)',
+                'username' => 'purchasing',
                 'email' => 'purchasing@konstruksi.id',
                 'password' => Hash::make('password'),
                 'role' => 'Purchasing',
             ],
             [
                 'name' => 'Hendra Kusuma, SE (Finance & Direksi)',
+                'username' => 'direksi',
                 'email' => 'direksi@konstruksi.id',
                 'password' => Hash::make('password'),
                 'role' => 'Finance/Direksi',
@@ -113,7 +125,11 @@ class RolePermissionSeeder extends Seeder
                 ['email' => $u['email']],
                 [
                     'name' => $u['name'],
+                    'username' => $u['username'] ?? null,
                     'password' => $u['password'],
+                    'role' => $u['role'],
+                    'permissions' => strtolower(str_replace([' ', '-', '_'], '', $u['role'])) === 'superadmin' ? ['*'] : User::defaultRolePermissions($u['role']),
+                    'is_active' => true,
                 ]
             );
             $user->syncRoles([$u['role']]);
