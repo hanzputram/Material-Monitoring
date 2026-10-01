@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\NumberHelper;
 use Illuminate\Database\Eloquent\Model;
 
 class RabItemMaterial extends Model
@@ -94,6 +95,6 @@ class RabItemMaterial extends Model
 
     public function getFormattedVolumeAttribute(): string
     {
-        return \App\Helpers\NumberHelper::formatQty($this->volume);
+        return NumberHelper::formatQty($this->volume);
     }
 }

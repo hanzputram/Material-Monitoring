@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             EquipmentMasterSeeder::class,
             MaterialMasterSeeder::class,
             SampleProjectSeeder::class,
+            WorkerSeeder::class,
         ]);
     }
 }

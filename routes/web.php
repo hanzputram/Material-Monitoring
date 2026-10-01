@@ -5,15 +5,20 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CostComparisonController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\FinanceSummaryController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\ProcurementController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\PurchaseDownPaymentController;
+use App\Http\Controllers\PurchasePaymentController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\RabBuilderController;
 use App\Http\Controllers\RabImportExportController;
 use App\Http\Controllers\RoleSimulationController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VarianceValidationController;
+use App\Http\Controllers\WorkerController;
 use Illuminate\Support\Facades\Route;
 
 // ============================================================
@@ -49,7 +54,7 @@ Route::middleware('auth')->group(function () {
     Route::post('materials/{material}/toggle-status', [MaterialController::class, 'toggleStatus'])->name('materials.toggle_status');
     Route::resource('materials', MaterialController::class);
 
-    // 4. Interactive RAB Tree Builder & BOM (Modul: rab)
+    // 4. Pembuatan RAB (Modul: rab)
     Route::prefix('rab')->name('rab.')->middleware('module:rab')->group(function () {
         Route::get('/builder', [RabBuilderController::class, 'index'])->name('builder');
         Route::post('/nodes', [RabBuilderController::class, 'storeNode'])->name('nodes.store');
@@ -90,6 +95,33 @@ Route::middleware('auth')->group(function () {
         // Submodul 3: Faktur Tagihan (Invoice)
         Route::get('/invoices', [ProcurementController::class, 'invoiceIndex'])->middleware('module:invoice_read')->name('invoices.index');
         Route::post('/invoices', [ProcurementController::class, 'storeInvoice'])->middleware('module:invoice_write')->name('invoice.store');
+        Route::delete('/invoices/{invoice}', [ProcurementController::class, 'destroyInvoice'])->middleware('module:invoice_write')->name('invoices.destroy');
+
+        // Submodul 4: Retur Pembelian (Purchase Return)
+        Route::get('/returns', [PurchaseReturnController::class, 'index'])->middleware('module:return_read')->name('returns.index');
+        Route::post('/returns', [PurchaseReturnController::class, 'store'])->middleware('module:return_write')->name('returns.store');
+        Route::delete('/returns/{purchaseReturn}', [PurchaseReturnController::class, 'destroy'])->middleware('module:return_write')->name('returns.destroy');
+    });
+
+    // 5.1 Modul Keuangan & Pembayaran
+    Route::prefix('finance')->name('finance.')->group(function () {
+        // Uang Muka Pembelian (Purchase Down Payment)
+        Route::get('/down-payments', [PurchaseDownPaymentController::class, 'index'])->middleware('module:down_payment_read')->name('down-payments.index');
+        Route::post('/down-payments', [PurchaseDownPaymentController::class, 'store'])->middleware('module:down_payment_write')->name('down-payments.store');
+        Route::delete('/down-payments/{purchaseDownPayment}', [PurchaseDownPaymentController::class, 'destroy'])->middleware('module:down_payment_write')->name('down-payments.destroy');
+
+        // Faktur Pembelian (Alias ke Invoices)
+        Route::get('/invoices', [ProcurementController::class, 'invoiceIndex'])->middleware('module:invoice_read')->name('invoices.index');
+        Route::post('/invoices', [ProcurementController::class, 'storeInvoice'])->middleware('module:invoice_write')->name('invoices.store');
+        Route::delete('/invoices/{invoice}', [ProcurementController::class, 'destroyInvoice'])->middleware('module:invoice_write')->name('invoices.destroy');
+
+        // Pembayaran Pembelian (Purchase Payment / Settlement)
+        Route::get('/payments', [PurchasePaymentController::class, 'index'])->middleware('module:payment_read')->name('payments.index');
+        Route::post('/payments', [PurchasePaymentController::class, 'store'])->middleware('module:payment_write')->name('payments.store');
+        Route::delete('/payments/{purchasePayment}', [PurchasePaymentController::class, 'destroy'])->middleware('module:payment_write')->name('payments.destroy');
+
+        // Summary Pembelian dari Masing-Masing Toko Lintas Proyek
+        Route::get('/supplier-summary', [FinanceSummaryController::class, 'supplierSummary'])->middleware('module:finance')->name('supplier-summary.index');
     });
 
     // 6. Material Realization & Dual Approval Variance Validation (Modul: variance)
@@ -119,6 +151,18 @@ Route::middleware('auth')->group(function () {
         Route::delete('/project/{equipment}', [EquipmentController::class, 'destroyProjectEquipment'])->name('project.destroy');
     });
 
+    // 8.1 Pekerja / Tukang Master & Alokasi Proyek (Modul: workers)
+    Route::prefix('workers')->name('workers.')->middleware('module:workers')->group(function () {
+        Route::get('/', [WorkerController::class, 'index'])->name('index');
+        Route::post('/master', [WorkerController::class, 'storeMaster'])->name('master.store');
+        Route::put('/master/{worker}', [WorkerController::class, 'updateMaster'])->name('master.update');
+        Route::delete('/master/{worker}', [WorkerController::class, 'destroyMaster'])->name('master.destroy');
+        Route::post('/assign', [WorkerController::class, 'assignSingle'])->name('assign');
+        Route::post('/fast-bulk', [WorkerController::class, 'fastBulkAssign'])->name('fast_bulk');
+        Route::put('/project/{projectWorker}', [WorkerController::class, 'updateProjectWorker'])->name('project.update');
+        Route::delete('/project/{projectWorker}', [WorkerController::class, 'destroyProjectWorker'])->name('project.destroy');
+    });
+
     // 9. Cost Realization (RAB vs Actual Comparison) (Modul: cost)
     Route::get('/cost', [CostComparisonController::class, 'index'])->middleware('module:cost')->name('cost.index');
 
@@ -132,12 +176,11 @@ Route::middleware('auth')->group(function () {
 // Fallback direct route untuk melayani file bukti fisik dari storage/app/public jika symlink terkendala
 Route::get('/storage/{path}', function (string $path) {
     $cleanPath = str_replace(['..', "\0"], '', $path);
-    $fullPath = storage_path('app/public/' . $cleanPath);
+    $fullPath = storage_path('app/public/'.$cleanPath);
 
-    if (!file_exists($fullPath) || is_dir($fullPath)) {
+    if (! file_exists($fullPath) || is_dir($fullPath)) {
         abort(404, 'File lampiran atau bukti fisik tidak ditemukan.');
     }
 
     return response()->file($fullPath);
 })->where('path', '.*')->name('storage.fallback');
-

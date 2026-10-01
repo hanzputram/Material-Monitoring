@@ -11,7 +11,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     protected $fillable = [
         'name',
@@ -48,7 +48,7 @@ class User extends Authenticatable
      */
     public function isSuperAdmin(): bool
     {
-        $roleLower = strtolower(str_replace([' ', '-', '_'], '', (string)$this->role));
+        $roleLower = strtolower(str_replace([' ', '-', '_'], '', (string) $this->role));
         if (in_array($roleLower, ['superadmin', 'superadministrator', 'root'])) {
             return true;
         }
@@ -65,9 +65,9 @@ class User extends Authenticatable
      */
     public function canReadPo(): bool
     {
-        return $this->isSuperAdmin() 
-            || $this->hasRawPermission('po_read') 
-            || $this->hasRawPermission('po_write') 
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('po_read')
+            || $this->hasRawPermission('po_write')
             || $this->hasRawPermission('procurement');
     }
 
@@ -76,8 +76,8 @@ class User extends Authenticatable
      */
     public function canWritePo(): bool
     {
-        return $this->isSuperAdmin() 
-            || $this->hasRawPermission('po_write') 
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('po_write')
             || $this->hasRawPermission('procurement');
     }
 
@@ -86,9 +86,9 @@ class User extends Authenticatable
      */
     public function canReadDo(): bool
     {
-        return $this->isSuperAdmin() 
-            || $this->hasRawPermission('do_read') 
-            || $this->hasRawPermission('do_write') 
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('do_read')
+            || $this->hasRawPermission('do_write')
             || $this->hasRawPermission('procurement');
     }
 
@@ -97,8 +97,8 @@ class User extends Authenticatable
      */
     public function canWriteDo(): bool
     {
-        return $this->isSuperAdmin() 
-            || $this->hasRawPermission('do_write') 
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('do_write')
             || $this->hasRawPermission('procurement');
     }
 
@@ -107,9 +107,9 @@ class User extends Authenticatable
      */
     public function canReadInvoice(): bool
     {
-        return $this->isSuperAdmin() 
-            || $this->hasRawPermission('invoice_read') 
-            || $this->hasRawPermission('invoice_write') 
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('invoice_read')
+            || $this->hasRawPermission('invoice_write')
             || $this->hasRawPermission('procurement');
     }
 
@@ -118,8 +118,76 @@ class User extends Authenticatable
      */
     public function canWriteInvoice(): bool
     {
-        return $this->isSuperAdmin() 
-            || $this->hasRawPermission('invoice_write') 
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('invoice_write')
+            || $this->hasRawPermission('procurement')
+            || $this->hasRawPermission('finance');
+    }
+
+    /**
+     * Cek apakah pengguna memiliki izin membaca / melihat Uang Muka Pembelian
+     */
+    public function canReadDownPayment(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('down_payment_read')
+            || $this->hasRawPermission('down_payment_write')
+            || $this->hasRawPermission('finance')
+            || $this->hasRawPermission('procurement');
+    }
+
+    /**
+     * Cek apakah pengguna memiliki izin mencatat Uang Muka Pembelian
+     */
+    public function canWriteDownPayment(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('down_payment_write')
+            || $this->hasRawPermission('finance')
+            || $this->hasRawPermission('procurement');
+    }
+
+    /**
+     * Cek apakah pengguna memiliki izin membaca / melihat Pembayaran Pembelian
+     */
+    public function canReadPayment(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('payment_read')
+            || $this->hasRawPermission('payment_write')
+            || $this->hasRawPermission('finance')
+            || $this->hasRawPermission('procurement');
+    }
+
+    /**
+     * Cek apakah pengguna memiliki izin mencatat Pembayaran Pembelian
+     */
+    public function canWritePayment(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('payment_write')
+            || $this->hasRawPermission('finance')
+            || $this->hasRawPermission('procurement');
+    }
+
+    /**
+     * Cek apakah pengguna memiliki izin membaca / melihat Retur Pembelian
+     */
+    public function canReadReturn(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('return_read')
+            || $this->hasRawPermission('return_write')
+            || $this->hasRawPermission('procurement');
+    }
+
+    /**
+     * Cek apakah pengguna memiliki izin mencatat Retur Pembelian
+     */
+    public function canWriteReturn(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasRawPermission('return_write')
             || $this->hasRawPermission('procurement');
     }
 
@@ -145,7 +213,8 @@ class User extends Authenticatable
             if ($this->hasPermissionTo($perm)) {
                 return true;
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return false;
     }
@@ -170,7 +239,14 @@ class User extends Authenticatable
             'do_write', 'do.write' => $this->canWriteDo(),
             'invoice_read', 'invoice.read' => $this->canReadInvoice(),
             'invoice_write', 'invoice.write' => $this->canWriteInvoice(),
-            'procurement' => $this->canReadPo() || $this->canReadDo() || $this->canReadInvoice(),
+            'down_payment_read', 'down_payment.read' => $this->canReadDownPayment(),
+            'down_payment_write', 'down_payment.write' => $this->canWriteDownPayment(),
+            'payment_read', 'payment.read' => $this->canReadPayment(),
+            'payment_write', 'payment.write' => $this->canWritePayment(),
+            'return_read', 'return.read' => $this->canReadReturn(),
+            'return_write', 'return.write' => $this->canWriteReturn(),
+            'procurement' => $this->canReadPo() || $this->canReadDo() || $this->canReadReturn(),
+            'finance' => $this->canReadInvoice() || $this->canReadDownPayment() || $this->canReadPayment(),
             default => $this->hasRawPermission($module),
         };
     }
@@ -198,7 +274,7 @@ class User extends Authenticatable
      */
     public function getRoleLabelAttribute(): string
     {
-        return match (strtolower(str_replace([' ', '-', '_'], '', (string)$this->role))) {
+        return match (strtolower(str_replace([' ', '-', '_'], '', (string) $this->role))) {
             'superadmin' => 'Super Administrator',
             'projectmanager' => 'Project Manager',
             'pengawaslapangan', 'pengawas' => 'Pengawas Lapangan',
@@ -230,7 +306,7 @@ class User extends Authenticatable
                 'description' => 'Membuat, mengedit, menghapus identitas proyek, dan mengatur parameter lantai.',
             ],
             'rab' => [
-                'name' => 'RAB Tree Builder & BOM',
+                'name' => 'Pembuatan RAB',
                 'category' => 'Perencanaan & Master',
                 'description' => 'Menyusun hierarki pekerjaan (Level 1-4) dan memecah material dasar (Level 5 BOM).',
             ],
@@ -285,10 +361,50 @@ class User extends Authenticatable
                 'category' => 'Sumber Daya & Lapangan',
                 'description' => 'Mengalokasikan armada alat berat dan peralatan kerja ke proyek melalui form cepat.',
             ],
+            'workers' => [
+                'name' => 'Pekerja & Tukang (Master & Proyek)',
+                'category' => 'Sumber Daya & Lapangan',
+                'description' => 'Mengelola katalog master tenaga kerja (mandor, tukang, kenek) dan alokasi ke proyek aktif.',
+            ],
             'alerts' => [
                 'name' => 'Pusat Peringatan (Alerts)',
                 'category' => 'Sumber Daya & Lapangan',
                 'description' => 'Menerima dan menyelesaikan notifikasi peringatan deviasi over/under material.',
+            ],
+            'down_payment_read' => [
+                'name' => 'Uang Muka Pembelian (DP) — Lihat Saja (Read)',
+                'category' => 'Keuangan & Pembayaran',
+                'description' => 'Melihat daftar uang muka (DP) yang dibayarkan ke supplier dan status pemotongannya.',
+            ],
+            'down_payment_write' => [
+                'name' => 'Uang Muka Pembelian (DP) — Catat & Kelola (Write)',
+                'category' => 'Keuangan & Pembayaran',
+                'description' => 'Mencatat uang muka pembelian baru, nominal, kuitansi, dan mengalokasikannya ke faktur.',
+            ],
+            'payment_read' => [
+                'name' => 'Pembayaran Pembelian — Lihat Saja (Read)',
+                'category' => 'Keuangan & Pembayaran',
+                'description' => 'Melihat arsip pembayaran dan pelunasan faktur pembelian kepada supplier.',
+            ],
+            'payment_write' => [
+                'name' => 'Pembayaran Pembelian — Catat & Kelola (Write)',
+                'category' => 'Keuangan & Pembayaran',
+                'description' => 'Mencatat pelunasan faktur, pembayaran bank/kas, dan mengunggah bukti transfer.',
+            ],
+            'return_read' => [
+                'name' => 'Retur Pembelian — Lihat Saja (Read)',
+                'category' => 'Pengadaan & Lapangan',
+                'description' => 'Melihat data pengembalian material rusak atau berlebih ke rekanan vendor.',
+            ],
+            'return_write' => [
+                'name' => 'Retur Pembelian — Catat & Kelola (Write)',
+                'category' => 'Pengadaan & Lapangan',
+                'description' => 'Mencatat retur material, menentukan kompensasi, dan memperbarui kuota realisasi.',
+            ],
+            'finance' => [
+                'name' => 'Rekap Pembelian Toko Lintas Proyek',
+                'category' => 'Keuangan & Pembayaran',
+                'description' => 'Melihat rekapitulasi pembelian dan status sisa hutang per supplier di seluruh proyek.',
             ],
             'users' => [
                 'name' => 'Manajemen Pengguna & Hak Akses',
@@ -306,16 +422,16 @@ class User extends Authenticatable
         return match (strtolower(str_replace([' ', '-', '_'], '', $role))) {
             'superadmin' => ['*'],
             'projectmanager' => [
-                'dashboard', 'cost', 'projects', 'rab', 'materials', 'po_read', 'po_write', 'do_read', 'do_write', 'invoice_read', 'invoice_write', 'suppliers', 'variance', 'equipment', 'alerts'
+                'dashboard', 'cost', 'projects', 'rab', 'materials', 'po_read', 'po_write', 'do_read', 'do_write', 'invoice_read', 'invoice_write', 'down_payment_read', 'down_payment_write', 'payment_read', 'payment_write', 'return_read', 'return_write', 'finance', 'suppliers', 'variance', 'equipment', 'workers', 'alerts',
             ],
             'pengawaslapangan', 'pengawas' => [
-                'dashboard', 'projects', 'rab', 'po_read', 'do_read', 'do_write', 'invoice_read', 'variance', 'equipment', 'alerts'
+                'dashboard', 'projects', 'rab', 'po_read', 'do_read', 'do_write', 'return_read', 'return_write', 'invoice_read', 'variance', 'equipment', 'workers', 'alerts',
             ],
             'purchasing' => [
-                'dashboard', 'cost', 'rab', 'materials', 'po_read', 'po_write', 'do_read', 'invoice_read', 'invoice_write', 'suppliers', 'variance', 'alerts'
+                'dashboard', 'cost', 'rab', 'materials', 'po_read', 'po_write', 'do_read', 'invoice_read', 'invoice_write', 'down_payment_read', 'down_payment_write', 'payment_read', 'payment_write', 'return_read', 'return_write', 'finance', 'suppliers', 'variance', 'alerts',
             ],
             'financedireksi', 'direksi', 'finance' => [
-                'dashboard', 'cost', 'po_read', 'do_read', 'invoice_read', 'variance', 'alerts'
+                'dashboard', 'cost', 'po_read', 'do_read', 'invoice_read', 'down_payment_read', 'down_payment_write', 'payment_read', 'payment_write', 'finance', 'variance', 'alerts',
             ],
             default => ['dashboard'],
         };

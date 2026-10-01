@@ -7,13 +7,14 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
         // Reset cached roles and permissions
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $permissions = [
             'users.manage',
@@ -56,22 +57,22 @@ class RolePermissionSeeder extends Seeder
             'project.create', 'project.edit', 'project.view',
             'rab.manage', 'rab.import', 'po.view', 'do.view', 'invoice.view',
             'monitoring.view', 'cost.view', 'equipment.master', 'equipment.input',
-            'alert.manage', 'report.export'
+            'alert.manage', 'report.export',
         ]);
 
         $pengawas->syncPermissions([
             'project.view', 'rab.manage', 'do.input', 'do.view',
-            'variance.validate.pengawas', 'monitoring.view', 'equipment.input'
+            'variance.validate.pengawas', 'monitoring.view', 'equipment.input',
         ]);
 
         $purchasing->syncPermissions([
             'project.view', 'material.bom', 'po.create', 'po.view',
             'invoice.input', 'invoice.view', 'variance.validate.purchasing',
-            'monitoring.view'
+            'monitoring.view',
         ]);
 
         $direksi->syncPermissions([
-            'project.view', 'monitoring.view', 'cost.view', 'report.export'
+            'project.view', 'monitoring.view', 'cost.view', 'report.export',
         ]);
 
         // Users

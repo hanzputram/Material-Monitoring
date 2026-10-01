@@ -24,6 +24,7 @@ class NumberHelper
 
         // Jika terdapat bagian desimal (contoh 21.21, 6127.04)
         $formatted = number_format($val, $maxDecimals, ',', '.');
+
         return rtrim(rtrim($formatted, '0'), ',');
     }
 
@@ -40,11 +41,12 @@ class NumberHelper
         $prefix = $withPrefix ? 'Rp ' : '';
 
         if (floor($val) == $val) {
-            return $prefix . number_format($val, 0, ',', '.');
+            return $prefix.number_format($val, 0, ',', '.');
         }
 
         $formatted = number_format($val, 2, ',', '.');
         $trimmed = rtrim(rtrim($formatted, '0'), ',');
-        return $prefix . $trimmed;
+
+        return $prefix.$trimmed;
     }
 }

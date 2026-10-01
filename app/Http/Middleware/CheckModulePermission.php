@@ -12,22 +12,23 @@ class CheckModulePermission
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string $module): Response
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login')->with('info', 'Silakan masuk terlebih dahulu untuk mengakses sistem.');
         }
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             Auth::logout();
+
             return redirect()->route('login')->withErrors(['login' => 'Akun Anda dinonaktifkan oleh administrator.']);
         }
 
-        if (!$user->hasModulePermission($module)) {
+        if (! $user->hasModulePermission($module)) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,

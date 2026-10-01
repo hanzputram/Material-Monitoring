@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'RAB Tree Builder & BOM — ' . $project->name)
-@section('page_title', 'RAB Tree Builder & Breakdown Material')
+@section('title', 'Pembuatan RAB — ' . $project->name)
+@section('page_title', 'Pembuatan RAB')
 @section('page_subtitle', 'Penyusunan Rencana Anggaran Biaya Berjenjang 5 Level & Bill of Material (BOM)')
 
 @section('content')
@@ -349,8 +349,8 @@
                                     class="w-full select-clean p-2.5 bg-white text-slate-800">
                                 <option value="">-- Pilih Material Dasar --</option>
                                 @foreach($materials as $m)
-                                    <option value="{{ $m->id }}" data-price="{{ $m->standard_price }}">
-                                        {{ $m->name }} ({{ $m->code }}) — Ref: Rp {{ number_format($m->standard_price, 0, ',', '.') }}/{{ $m->defaultUnit?->code }}
+                                    <option value="{{ $m->id }}" data-price="{{ (float)$m->standard_price }}">
+                                        {{ $m->name }} ({{ $m->code }})@if($m->standard_price > 0) — Ref: Rp {{ number_format($m->standard_price, 0, ',', '.') }}/{{ $m->defaultUnit?->code }}@endif
                                     </option>
                                 @endforeach
                             </select>
@@ -473,8 +473,8 @@
                                     class="w-full select-clean p-2.5 bg-white text-slate-800">
                                 <option value="">-- Pilih Material Komponen Pembentuk --</option>
                                 @foreach($materials as $m)
-                                    <option value="{{ $m->id }}" data-price="{{ $m->standard_price }}">
-                                        {{ $m->name }} ({{ $m->code }}) — Ref: Rp {{ number_format($m->standard_price, 0, ',', '.') }}/{{ $m->defaultUnit?->code }}
+                                    <option value="{{ $m->id }}" data-price="{{ (float)$m->standard_price }}">
+                                        {{ $m->name }} ({{ $m->code }})@if($m->standard_price > 0) — Ref: Rp {{ number_format($m->standard_price, 0, ',', '.') }}/{{ $m->defaultUnit?->code }}@endif
                                     </option>
                                 @endforeach
                             </select>

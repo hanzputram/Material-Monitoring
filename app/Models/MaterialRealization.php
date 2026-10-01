@@ -52,6 +52,7 @@ class MaterialRealization extends Model
         } elseif ($actual < $planned) {
             return 'partial';
         }
+
         return 'normal';
     }
 
@@ -60,8 +61,8 @@ class MaterialRealization extends Model
         $project = Project::find($projectId);
         $material = Material::find($materialId);
 
-        if (!$project || !$material) {
-            throw new \InvalidArgumentException("Project or Material not found");
+        if (! $project || ! $material) {
+            throw new \InvalidArgumentException('Project or Material not found');
         }
 
         // 1. Calculate planned_qty from rab_item_materials in this project
@@ -72,11 +73,18 @@ class MaterialRealization extends Model
                 $query->where('project_id', $projectId);
             })->where('material_id', $materialId)->sum('volume');
 
-        // 2. Calculate actual_qty from validated delivery orders
-        $actualQty = (float) DeliveryOrderItem::whereHas('deliveryOrder', function ($query) use ($projectId) {
+        // 2. Calculate actual_qty from validated delivery orders minus any completed returns
+        $receivedQty = (float) DeliveryOrderItem::whereHas('deliveryOrder', function ($query) use ($projectId) {
             $query->where('project_id', $projectId)
-                  ->where('status', 'validated');
+                ->where('status', 'validated');
         })->where('material_id', $materialId)->sum('qty_received');
+
+        $returnedQty = (float) PurchaseReturnItem::whereHas('purchaseReturn', function ($query) use ($projectId) {
+            $query->where('project_id', $projectId)
+                ->where('status', 'completed');
+        })->where('material_id', $materialId)->sum('qty_returned');
+
+        $actualQty = max(0, $receivedQty - $returnedQty);
 
         // 3. Variance
         $varianceQty = $actualQty - $plannedQty;
@@ -119,7 +127,7 @@ class MaterialRealization extends Model
             $severity = abs($variancePct) >= ($overThreshold * 2) ? 'critical' : 'warning';
             $message = $status === 'kelebihan'
                 ? "Material {$material->name} melebihi rencana RAB sebesar {$variancePct}% (Rencana: {$plannedQty}, Aktual: {$actualQty})"
-                : "Material {$material->name} kurang dari rencana RAB sebesar " . abs($variancePct) . "% (Rencana: {$plannedQty}, Aktual: {$actualQty})";
+                : "Material {$material->name} kurang dari rencana RAB sebesar ".abs($variancePct)."% (Rencana: {$plannedQty}, Aktual: {$actualQty})";
 
             Alert::updateOrCreate(
                 [

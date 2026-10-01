@@ -11,11 +11,10 @@ use App\Models\Unit;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class RabExcelService
 {
@@ -24,7 +23,7 @@ class RabExcelService
      */
     public function generateTemplate(): Spreadsheet
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         // --- Sheet 1: Info Proyek ---
         $sheetInfo = $spreadsheet->getActiveSheet();
@@ -114,12 +113,12 @@ class RabExcelService
         $rowIdx = 2;
         foreach ($sampleData as $row) {
             $sheetDetail->setCellValue("A{$rowIdx}", $row[0]);
-            $sheetDetail->setCellValueExplicit("B{$rowIdx}", (string)$row[1], DataType::TYPE_STRING);
+            $sheetDetail->setCellValueExplicit("B{$rowIdx}", (string) $row[1], DataType::TYPE_STRING);
             $sheetDetail->setCellValue("C{$rowIdx}", $row[2]);
-            $sheetDetail->setCellValue("D{$rowIdx}", $row[3] !== '' ? (float)$row[3] : '');
+            $sheetDetail->setCellValue("D{$rowIdx}", $row[3] !== '' ? (float) $row[3] : '');
             $sheetDetail->setCellValue("E{$rowIdx}", $row[4]);
-            $sheetDetail->setCellValue("F{$rowIdx}", $row[5] !== '' ? (float)$row[5] : '');
-            $sheetDetail->setCellValue("G{$rowIdx}", $row[6] !== '' ? (float)$row[6] : '');
+            $sheetDetail->setCellValue("F{$rowIdx}", $row[5] !== '' ? (float) $row[5] : '');
+            $sheetDetail->setCellValue("G{$rowIdx}", $row[6] !== '' ? (float) $row[6] : '');
 
             // Styling by Level
             if ($row[0] == 1) {
@@ -153,7 +152,7 @@ class RabExcelService
      */
     public function validateAndPreview(UploadedFile $file): array
     {
-        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        $reader = new Xlsx;
         $spreadsheet = $reader->load($file->getRealPath());
 
         $result = [
@@ -178,9 +177,9 @@ class RabExcelService
         if ($sheetInfo) {
             $highestRow = $sheetInfo->getHighestRow();
             for ($r = 4; $r <= $highestRow; $r++) {
-                $field = trim((string)$sheetInfo->getCell("A{$r}")->getValue());
-                $val = trim((string)$sheetInfo->getCell("B{$r}")->getValue());
-                if (!empty($field)) {
+                $field = trim((string) $sheetInfo->getCell("A{$r}")->getValue());
+                $val = trim((string) $sheetInfo->getCell("B{$r}")->getValue());
+                if (! empty($field)) {
                     $result['project_info'][$field] = $val;
                 }
             }
@@ -188,7 +187,7 @@ class RabExcelService
 
         // 2. Read Detail RAB
         $sheetDetail = $spreadsheet->getSheetByName('Detail RAB');
-        if (!$sheetDetail) {
+        if (! $sheetDetail) {
             // Fallback to first sheet if only 1 sheet exists
             $sheetDetail = $spreadsheet->getSheet(0);
         }
@@ -202,11 +201,11 @@ class RabExcelService
         $activeItem = null;
 
         for ($r = 2; $r <= $highestRow; $r++) {
-            $level = (int)$sheetDetail->getCell("A{$r}")->getValue();
-            $code = trim((string)$sheetDetail->getCell("B{$r}")->getValue());
-            $name = trim((string)$sheetDetail->getCell("C{$r}")->getValue());
+            $level = (int) $sheetDetail->getCell("A{$r}")->getValue();
+            $code = trim((string) $sheetDetail->getCell("B{$r}")->getValue());
+            $name = trim((string) $sheetDetail->getCell("C{$r}")->getValue());
             $volume = $sheetDetail->getCell("D{$r}")->getValue();
-            $unitCode = trim((string)$sheetDetail->getCell("E{$r}")->getValue());
+            $unitCode = trim((string) $sheetDetail->getCell("E{$r}")->getValue());
             $unitPrice = $sheetDetail->getCell("F{$r}")->getValue();
             $totalPrice = $sheetDetail->getCell("G{$r}")->getValue();
 
@@ -236,7 +235,7 @@ class RabExcelService
                 $activeItem = null;
             } elseif ($level == 2) {
                 $result['stats']['level_2_count']++;
-                if (!$activeNode1) {
+                if (! $activeNode1) {
                     $rowErrors[] = "Baris {$r}: Sub Kategori (Level 2) muncul sebelum ada Kategori (Level 1)";
                 }
                 $activeNode2 = $name;
@@ -244,7 +243,7 @@ class RabExcelService
                 $activeItem = null;
             } elseif ($level == 3) {
                 $result['stats']['level_3_count']++;
-                if (!$activeNode2) {
+                if (! $activeNode2) {
                     $rowErrors[] = "Baris {$r}: Sub-Sub Kategori (Level 3) muncul sebelum ada Sub Kategori (Level 2)";
                 }
                 $activeNode3 = $name;
@@ -252,10 +251,10 @@ class RabExcelService
             } elseif ($level == 4) {
                 $result['stats']['level_4_count']++;
                 $activeItem = $name;
-                $numericVol = (float)str_replace(',', '', (string)$volume);
-                $numericPrice = (float)str_replace(',', '', (string)$unitPrice);
+                $numericVol = (float) str_replace(',', '', (string) $volume);
+                $numericPrice = (float) str_replace(',', '', (string) $unitPrice);
                 $calcTotal = $numericVol * $numericPrice;
-                $numericTotal = (float)str_replace(',', '', (string)$totalPrice);
+                $numericTotal = (float) str_replace(',', '', (string) $totalPrice);
 
                 if ($numericTotal > 0) {
                     $result['stats']['total_rab_amount'] += $numericTotal;
@@ -263,17 +262,17 @@ class RabExcelService
                     $result['stats']['total_rab_amount'] += $calcTotal;
                 }
 
-                if (!empty($unitCode) && !isset($unitsMap[$unitCode])) {
+                if (! empty($unitCode) && ! isset($unitsMap[$unitCode])) {
                     $result['warnings'][] = "Baris {$r}: Satuan '{$unitCode}' belum terdaftar di master units (akan otomatis dibuat)";
                 }
             } elseif ($level == 5) {
                 $result['stats']['level_5_count']++;
-                if (!$activeItem) {
+                if (! $activeItem) {
                     $rowErrors[] = "Baris {$r}: Material Breakdown (Level 5) harus berada di bawah Item Pekerjaan (Level 4)";
                 }
             }
 
-            if (!empty($rowErrors)) {
+            if (! empty($rowErrors)) {
                 $result['valid'] = false;
                 $result['errors'] = array_merge($result['errors'], $rowErrors);
             }
@@ -283,10 +282,10 @@ class RabExcelService
                 'level' => $level,
                 'code' => $code,
                 'name' => $name,
-                'volume' => $volume !== null && $volume !== '' ? (float)str_replace(',', '', (string)$volume) : null,
+                'volume' => $volume !== null && $volume !== '' ? (float) str_replace(',', '', (string) $volume) : null,
                 'unit' => $unitCode,
-                'unit_price' => $unitPrice !== null && $unitPrice !== '' ? (float)str_replace(',', '', (string)$unitPrice) : null,
-                'total_price' => $totalPrice !== null && $totalPrice !== '' ? (float)str_replace(',', '', (string)$totalPrice) : null,
+                'unit_price' => $unitPrice !== null && $unitPrice !== '' ? (float) str_replace(',', '', (string) $unitPrice) : null,
+                'total_price' => $totalPrice !== null && $totalPrice !== '' ? (float) str_replace(',', '', (string) $totalPrice) : null,
                 'errors' => $rowErrors,
             ];
         }
@@ -307,12 +306,12 @@ class RabExcelService
                 $project = Project::findOrFail($targetProjectId);
             } else {
                 $info = $previewData['project_info'] ?? [];
-                $projectName = $info['Nama Proyek'] ?? ('Proyek Import ' . date('d-m-Y H:i'));
+                $projectName = $info['Nama Proyek'] ?? ('Proyek Import '.date('d-m-Y H:i'));
                 $project = Project::create([
                     'name' => $projectName,
                     'prototype_type' => $info['Tipe Prototype'] ?? null,
-                    'floor_count' => (int)($info['Jumlah Lantai'] ?? 1),
-                    'budget_year' => $info['Tahun Anggaran'] ?? (string)date('Y'),
+                    'floor_count' => (int) ($info['Jumlah Lantai'] ?? 1),
+                    'budget_year' => $info['Tahun Anggaran'] ?? (string) date('Y'),
                     'location_kds' => $info['Lokasi KDS'] ?? null,
                     'foundation_type' => $info['Tipe Pondasi'] ?? null,
                     'status' => 'active',
@@ -337,7 +336,7 @@ class RabExcelService
                 $totalPrice = $row['total_price'] ?? ($volume * $unitPrice);
 
                 // Auto register unit if missing
-                if (!empty($unitCode) && !isset($unitsMap[$unitCode])) {
+                if (! empty($unitCode) && ! isset($unitsMap[$unitCode])) {
                     $newUnit = Unit::create([
                         'code' => $unitCode,
                         'name' => $unitCode,
@@ -384,7 +383,7 @@ class RabExcelService
                 } elseif ($level == 4) {
                     // Deepest active node
                     $targetNode = $currentL3 ?: ($currentL2 ?: $currentL1);
-                    if (!$targetNode) {
+                    if (! $targetNode) {
                         // Create default category if missing
                         $targetNode = RabNode::create([
                             'project_id' => $project->id,
@@ -399,7 +398,7 @@ class RabExcelService
 
                     $currentL4 = RabItem::create([
                         'rab_node_id' => $targetNode->id,
-                        'item_no' => $code ?: ($sortOrder . '.0'),
+                        'item_no' => $code ?: ($sortOrder.'.0'),
                         'name' => $name,
                         'volume' => $volume,
                         'unit_id' => $unitId,
@@ -413,7 +412,7 @@ class RabExcelService
                     $material = Material::firstOrCreate(
                         ['name' => $name],
                         [
-                            'code' => 'MAT-IMP-' . strtoupper(substr(md5($name), 0, 6)),
+                            'code' => 'MAT-IMP-'.strtoupper(substr(md5($name), 0, 6)),
                             'category' => 'bahan_dasar',
                             'default_unit_id' => $unitId,
                             'standard_price' => $unitPrice,
@@ -451,7 +450,7 @@ class RabExcelService
      */
     public function export(Project $project): Spreadsheet
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         // Sheet 1: Info Proyek
         $sheetInfo = $spreadsheet->getActiveSheet();
@@ -464,11 +463,11 @@ class RabExcelService
         $fields = [
             'PEKERJAAN' => $project->name,
             'TIPE PROTOTYPE' => $project->prototype_type ?: '-',
-            'JUMLAH LANTAI' => ($project->floor_count ?: 1) . ' LANTAI',
+            'JUMLAH LANTAI' => ($project->floor_count ?: 1).' LANTAI',
             'TAHUN ANGGARAN' => $project->budget_year ?: '-',
             'LOKASI KDS' => $project->location_kds ?: '-',
             'TYPE PONDASI' => $project->foundation_type ?: '-',
-            'TOTAL ANGGARAN' => 'Rp ' . number_format($project->total_rab, 2, ',', '.'),
+            'TOTAL ANGGARAN' => 'Rp '.number_format($project->total_rab, 2, ',', '.'),
         ];
 
         $r = 3;
@@ -508,9 +507,9 @@ class RabExcelService
 
         foreach ($roots as $node1) {
             // Level 1
-            $sheetDetail->setCellValueExplicit("A{$rowIdx}", (string)$node1->code, DataType::TYPE_STRING);
+            $sheetDetail->setCellValueExplicit("A{$rowIdx}", (string) $node1->code, DataType::TYPE_STRING);
             $sheetDetail->setCellValue("B{$rowIdx}", $node1->name);
-            $sheetDetail->setCellValue("F{$rowIdx}", (float)$node1->subtotal_cache);
+            $sheetDetail->setCellValue("F{$rowIdx}", (float) $node1->subtotal_cache);
             $sheetDetail->getStyle("A{$rowIdx}:F{$rowIdx}")->getFont()->setBold(true);
             $sheetDetail->getStyle("A{$rowIdx}:F{$rowIdx}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF1F5F9');
             $rowIdx++;
@@ -522,9 +521,9 @@ class RabExcelService
 
             // Level 2 Sub-categories
             foreach ($node1->children as $node2) {
-                $sheetDetail->setCellValueExplicit("A{$rowIdx}", (string)$node2->code, DataType::TYPE_STRING);
+                $sheetDetail->setCellValueExplicit("A{$rowIdx}", (string) $node2->code, DataType::TYPE_STRING);
                 $sheetDetail->setCellValue("B{$rowIdx}", $node2->name);
-                $sheetDetail->setCellValue("F{$rowIdx}", (float)$node2->subtotal_cache);
+                $sheetDetail->setCellValue("F{$rowIdx}", (float) $node2->subtotal_cache);
                 $sheetDetail->getStyle("A{$rowIdx}:F{$rowIdx}")->getFont()->setBold(true);
                 $rowIdx++;
 
@@ -534,9 +533,9 @@ class RabExcelService
 
                 // Level 3 Sub-Sub categories
                 foreach ($node2->children as $node3) {
-                    $sheetDetail->setCellValueExplicit("A{$rowIdx}", (string)$node3->code, DataType::TYPE_STRING);
+                    $sheetDetail->setCellValueExplicit("A{$rowIdx}", (string) $node3->code, DataType::TYPE_STRING);
                     $sheetDetail->setCellValue("B{$rowIdx}", $node3->name);
-                    $sheetDetail->setCellValue("F{$rowIdx}", (float)$node3->subtotal_cache);
+                    $sheetDetail->setCellValue("F{$rowIdx}", (float) $node3->subtotal_cache);
                     $sheetDetail->getStyle("A{$rowIdx}:F{$rowIdx}")->getFont()->setBold(true);
                     $rowIdx++;
 
@@ -561,23 +560,23 @@ class RabExcelService
 
     private function writeItemRow($sheet, RabItem $item, int $rowIdx): int
     {
-        $sheet->setCellValueExplicit("A{$rowIdx}", (string)$item->item_no, DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit("A{$rowIdx}", (string) $item->item_no, DataType::TYPE_STRING);
         $sheet->setCellValue("B{$rowIdx}", $item->name);
-        $sheet->setCellValue("C{$rowIdx}", (float)$item->volume);
+        $sheet->setCellValue("C{$rowIdx}", (float) $item->volume);
         $sheet->setCellValue("D{$rowIdx}", $item->unit?->code ?? '');
-        $sheet->setCellValue("E{$rowIdx}", (float)$item->unit_price);
-        $sheet->setCellValue("F{$rowIdx}", (float)$item->total_price);
+        $sheet->setCellValue("E{$rowIdx}", (float) $item->unit_price);
+        $sheet->setCellValue("F{$rowIdx}", (float) $item->total_price);
         $rowIdx++;
 
         // If composite, write Level 5 breakdowns
         if ($item->is_composite) {
             foreach ($item->materials as $mat) {
                 $sheet->setCellValue("A{$rowIdx}", '-');
-                $sheet->setCellValue("B{$rowIdx}", '   - ' . ($mat->material?->name ?? 'Material'));
-                $sheet->setCellValue("C{$rowIdx}", (float)$mat->volume);
+                $sheet->setCellValue("B{$rowIdx}", '   - '.($mat->material?->name ?? 'Material'));
+                $sheet->setCellValue("C{$rowIdx}", (float) $mat->volume);
                 $sheet->setCellValue("D{$rowIdx}", $mat->unit?->code ?? '');
-                $sheet->setCellValue("E{$rowIdx}", (float)$mat->unit_price);
-                $sheet->setCellValue("F{$rowIdx}", (float)$mat->total_price);
+                $sheet->setCellValue("E{$rowIdx}", (float) $mat->unit_price);
+                $sheet->setCellValue("F{$rowIdx}", (float) $mat->total_price);
                 $sheet->getStyle("A{$rowIdx}:F{$rowIdx}")->getFont()->getColor()->setARGB('FF64748B');
                 $rowIdx++;
             }

@@ -45,20 +45,20 @@ class AuthController extends Controller
         $user = User::where($field, $loginInput)->first();
 
         // Jika tidak ditemukan dengan username, coba periksa apakah kolom username null dan email cocok
-        if (!$user && $field === 'username') {
+        if (! $user && $field === 'username') {
             $user = User::where('email', $loginInput)->first();
             if ($user) {
                 $field = 'email';
             }
         }
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (! $user || ! Hash::check($password, $user->password)) {
             return back()->withInput($request->only('login', 'remember'))->withErrors([
                 'login' => 'Email/Username atau kata sandi yang Anda masukkan tidak sesuai.',
             ]);
         }
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return back()->withInput($request->only('login'))->withErrors([
                 'login' => 'Akun Anda saat ini dinonaktifkan oleh Administrator. Hubungi Super Admin.',
             ]);
@@ -68,7 +68,7 @@ class AuthController extends Controller
         Auth::login($user, $remember);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'))->with('success', 'Selamat datang kembali, ' . $user->name . '!');
+        return redirect()->intended(route('dashboard'))->with('success', 'Selamat datang kembali, '.$user->name.'!');
     }
 
     /**

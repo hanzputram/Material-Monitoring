@@ -29,10 +29,10 @@ class CostComparisonController extends Controller
             'rabItems.costRealization',
             'rabItems.unit',
         ])
-        ->where('project_id', $project->id)
-        ->whereNull('parent_id')
-        ->orderBy('sort_order')
-        ->get();
+            ->where('project_id', $project->id)
+            ->whereNull('parent_id')
+            ->orderBy('sort_order')
+            ->get();
 
         // 2. Flat list of all items with cost realization
         $costItems = CostRealization::with(['rabItem.unit', 'rabItem.rabNode'])
@@ -51,7 +51,7 @@ class CostComparisonController extends Controller
         $chartActuals = [];
 
         foreach ($rootNodes as $node) {
-            $chartCategories[] = $node->code . ' ' . (strlen($node->name) > 20 ? substr($node->name, 0, 18) . '...' : $node->name);
+            $chartCategories[] = $node->code.' '.(strlen($node->name) > 20 ? substr($node->name, 0, 18).'...' : $node->name);
             $chartBudgets[] = (float) $node->subtotal_cache;
             $chartActuals[] = round((float) $node->subtotal_cache * 0.92, 2); // Sample realization comparison
         }

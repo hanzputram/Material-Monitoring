@@ -27,6 +27,7 @@ class RoleSimulationController extends Controller
 
         if ($user) {
             Auth::login($user);
+
             return redirect()->back()->with('success', "Beralih peran aktif sebagai: {$request->role} ({$user->name})");
         }
 

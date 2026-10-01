@@ -61,12 +61,12 @@ class RabImportExportController extends Controller
         $preview = session('rab_import_preview');
         $targetProjectId = session('rab_import_target_project_id');
 
-        if (!$preview) {
+        if (! $preview) {
             return redirect()->route('rab.import.form')
                 ->with('error', 'Sesi import telah kedaluwarsa. Silakan unggah kembali file Excel.');
         }
 
-        if (!$preview['valid']) {
+        if (! $preview['valid']) {
             return redirect()->route('rab.import.form')
                 ->with('error', 'Terdapat error pada file Excel. Harap perbaiki sebelum mengimpor.');
         }
@@ -85,7 +85,7 @@ class RabImportExportController extends Controller
     {
         $spreadsheet = $this->excelService->export($project);
         $safeName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $project->name);
-        $fileName = "RAB_{$safeName}_" . date('Ymd_His') . ".xlsx";
+        $fileName = "RAB_{$safeName}_".date('Ymd_His').'.xlsx';
 
         return new StreamedResponse(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);

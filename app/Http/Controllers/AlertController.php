@@ -44,12 +44,14 @@ class AlertController extends Controller
     public function markAsRead(Alert $alert)
     {
         $alert->update(['status' => 'read']);
+
         return redirect()->back()->with('success', 'Alert ditandai sudah dibaca.');
     }
 
     public function markAsResolved(Alert $alert)
     {
         $alert->update(['status' => 'resolved']);
+
         return redirect()->back()->with('success', 'Alert ditandai telah diselesaikan.');
     }
 }

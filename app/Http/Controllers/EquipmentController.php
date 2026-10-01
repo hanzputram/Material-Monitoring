@@ -36,15 +36,15 @@ class EquipmentController extends Controller
         $masterQuery = EquipmentMaster::with(['category', 'defaultUnit'])
             ->withCount('projectEquipments');
 
-        if (!empty($search)) {
+        if (! empty($search)) {
             $masterQuery->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('spec', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('spec', 'like', "%{$search}%");
             });
         }
 
-        if (!empty($categoryId) && $categoryId !== 'all') {
+        if (! empty($categoryId) && $categoryId !== 'all') {
             $masterQuery->where('equipment_category_id', $categoryId);
         }
 
@@ -130,7 +130,7 @@ class EquipmentController extends Controller
                     }
                 }
             }
-            $validated['code'] = $prefix . str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
+            $validated['code'] = $prefix.str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
         }
 
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -146,7 +146,7 @@ class EquipmentController extends Controller
         $validated = $request->validate([
             'equipment_category_id' => 'required|exists:equipment_categories,id',
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:equipment_master,code,' . $equipmentMaster->id,
+            'code' => 'required|string|max:50|unique:equipment_master,code,'.$equipmentMaster->id,
             'default_unit_id' => 'nullable|exists:units,id',
             'price' => 'required|numeric|min:0',
             'spec' => 'nullable|string|max:1000',
@@ -205,7 +205,7 @@ class EquipmentController extends Controller
         $savedCount = 0;
         foreach ($validated['items'] as $itemData) {
             // Only save if item was checked/selected
-            if (!empty($itemData['selected'])) {
+            if (! empty($itemData['selected'])) {
                 $master = EquipmentMaster::find($itemData['equipment_master_id']);
                 $rentalRate = (isset($itemData['rental_rate']) && $itemData['rental_rate'] !== '')
                     ? $itemData['rental_rate']

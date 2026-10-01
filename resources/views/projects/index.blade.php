@@ -46,7 +46,7 @@
                             <span class="font-bold font-mono text-emerald-700">Rp {{ number_format($p->total_realization, 0, ',', '.') }}</span>
                         </div>
                         <div class="flex justify-between text-slate-600">
-                            <span>Surat Jalan (DO):</span>
+                            <span>Penerimaan Pembelian (DO):</span>
                             <span class="font-semibold">{{ $p->delivery_orders_count }} Dokumen</span>
                         </div>
                     </div>

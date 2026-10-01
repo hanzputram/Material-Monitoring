@@ -42,6 +42,11 @@ class PurchaseOrder extends Model
 
     public function deliveryOrders()
     {
+        return $this->belongsToMany(DeliveryOrder::class, 'delivery_order_purchase_order')->withTimestamps();
+    }
+
+    public function directDeliveryOrders()
+    {
         return $this->hasMany(DeliveryOrder::class);
     }
 

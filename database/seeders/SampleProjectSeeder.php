@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\CostRealization;
 use App\Models\DeliveryOrder;
 use App\Models\DeliveryOrderItem;
 use App\Models\EquipmentMaster;
@@ -473,12 +472,12 @@ class SampleProjectSeeder extends Seeder
     protected function ensureSampleAttachmentsExist(): void
     {
         $dir = storage_path('app/public/attachments');
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0777, true);
         }
 
-        $doFile = $dir . '/do_sample_surat_jalan.pdf';
-        if (!file_exists($doFile)) {
+        $doFile = $dir.'/do_sample_surat_jalan.pdf';
+        if (! file_exists($doFile)) {
             file_put_contents($doFile, $this->buildMinimalPdf([
                 'SURAT JALAN / DELIVERY ORDER (DO)',
                 'Nomor: DO/BPS/2026-0891',
@@ -489,8 +488,8 @@ class SampleProjectSeeder extends Seeder
             ]));
         }
 
-        $invFile = $dir . '/inv_sample_faktur.pdf';
-        if (!file_exists($invFile)) {
+        $invFile = $dir.'/inv_sample_faktur.pdf';
+        if (! file_exists($invFile)) {
             file_put_contents($invFile, $this->buildMinimalPdf([
                 'FAKTUR TAGIHAN / INVOICE',
                 'Nomor: INV/BPS/26/0442',
@@ -514,10 +513,10 @@ class SampleProjectSeeder extends Seeder
 
         $stream = "BT\n/F1 16 Tf\n50 780 Td\n";
         foreach ($lines as $line) {
-            $stream .= "(" . addcslashes($line, "()\\") . ") Tj\n0 -25 Td\n";
+            $stream .= '('.addcslashes($line, '()\\').") Tj\n0 -25 Td\n";
         }
-        $stream .= "ET";
-        $objects[4] = '<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream";
+        $stream .= 'ET';
+        $objects[4] = '<< /Length '.strlen($stream)." >>\nstream\n".$stream."\nendstream";
         $objects[5] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
 
         $out = "%PDF-1.4\n";
@@ -527,13 +526,14 @@ class SampleProjectSeeder extends Seeder
             $out .= "$id 0 obj\n$obj\nendobj\n";
         }
         $xrefOffset = strlen($out);
-        $out .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $out .= "xref\n0 ".(count($objects) + 1)."\n";
         $out .= "0000000000 65535 f \n";
         for ($i = 1; $i <= count($objects); $i++) {
             $out .= sprintf("%010d 00000 n \n", $offsets[$i]);
         }
-        $out .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $out .= "trailer\n<< /Size ".(count($objects) + 1)." /Root 1 0 R >>\n";
         $out .= "startxref\n$xrefOffset\n%%EOF\n";
+
         return $out;
     }
 }

@@ -45,10 +45,10 @@ class RabBuilderController extends Controller
             'rabItems.materials.unit',
             'rabItems.unit',
         ])
-        ->where('project_id', $project->id)
-        ->whereNull('parent_id')
-        ->orderBy('sort_order')
-        ->get();
+            ->where('project_id', $project->id)
+            ->whereNull('parent_id')
+            ->orderBy('sort_order')
+            ->get();
 
         // Items with BOM available for cloning
         $itemsWithBom = RabItem::whereHas('materials')
@@ -260,6 +260,7 @@ class RabBuilderController extends Controller
         if ($level === 1) {
             $romans = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
             $count = $project->rootRabNodes()->count();
+
             return $romans[$count % count($romans)];
         }
 
@@ -268,13 +269,15 @@ class RabBuilderController extends Controller
             $parentCode = $parent ? $parent->code : 'I';
             $letters = range('A', 'Z');
             $childCount = RabNode::where('parent_id', $parentId)->count();
-            return $parentCode . '.' . ($letters[$childCount % count($letters)]);
+
+            return $parentCode.'.'.($letters[$childCount % count($letters)]);
         }
 
         if ($level === 3) {
             $letters = range('A', 'Z');
             $childCount = RabNode::where('parent_id', $parentId)->count();
-            return ($letters[$childCount % count($letters)]) . '.1';
+
+            return $letters[$childCount % count($letters)].'.1';
         }
 
         return (string) rand(1, 99);

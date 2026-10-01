@@ -97,7 +97,7 @@
                 </div>
                 <h3 class="text-lg sm:text-xl font-black tracking-tight text-white">Alur Persetujuan Bertahap Deviasi Material</h3>
                 <p class="text-xs text-slate-300 mt-1 leading-relaxed">
-                    Setiap selisih kuantiti fisik material wajib melalui 2 pintu validasi independen: <strong class="text-white">Pengawas Lapangan</strong> (validasi fisik Surat Jalan / DO) dan <strong class="text-white">Purchasing</strong> (validasi finansial Faktur / Invoice).
+                    Setiap selisih kuantiti fisik material wajib melalui 2 pintu validasi independen: <strong class="text-white">Pengawas Lapangan</strong> (validasi fisik Penerimaan Pembelian / DO) dan <strong class="text-white">Purchasing</strong> (validasi finansial Faktur / Invoice).
                 </p>
             </div>
 
@@ -105,7 +105,7 @@
             <div class="flex items-center gap-1.5 sm:gap-2 text-xs font-bold flex-wrap sm:flex-nowrap">
                 <div class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-slate-800 border border-slate-700 text-center shadow-sm">
                     <span class="block text-[9px] sm:text-[10px] text-blue-400 uppercase font-extrabold">Tahap 1</span>
-                    <span class="text-white font-black text-[11px] sm:text-xs">Fisik DO Lapangan</span>
+                    <span class="text-white font-black text-[11px] sm:text-xs">Fisik Penerimaan (DO)</span>
                 </div>
                 <span class="text-slate-400 text-base sm:text-xl font-bold">&rarr;</span>
                 <div class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-slate-800 border border-slate-700 text-center shadow-sm">
@@ -401,9 +401,9 @@
                         </div>
 
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Pilih Bukti Surat Jalan (DO) Fisik yang Sesuai <span class="text-rose-500">*</span></label>
+                            <label class="block font-semibold text-slate-700 mb-1">Pilih Bukti Penerimaan Pembelian (DO) Fisik yang Sesuai <span class="text-rose-500">*</span></label>
                             <select name="delivery_order_id" required class="w-full select-clean p-2.5 bg-white text-slate-800">
-                                <option value="">-- Pilih DO Tervalidasi --</option>
+                                <option value="">-- Pilih Penerimaan (DO) Tervalidasi --</option>
                                 @foreach($availableDos as $ado)
                                     <option value="{{ $ado->id }}">
                                         {{ $ado->do_number }} • {{ $ado->supplier->name }} ({{ \Carbon\Carbon::parse($ado->do_date)->format('d/m/Y') }})

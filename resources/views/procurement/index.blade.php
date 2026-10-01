@@ -96,8 +96,23 @@
                         <tr>
                             <td class="py-3 px-5 font-bold font-mono text-slate-800">{{ $do->do_number }}</td>
                             <td class="py-3 px-4 text-slate-600 font-medium">{{ \Carbon\Carbon::parse($do->do_date)->format('d/m/Y') }}</td>
-                            <td class="py-3 px-4 font-semibold text-slate-800">{{ $do->supplier->name }}</td>
-                            <td class="py-3 px-4 font-mono text-slate-500">{{ $do->purchaseOrder?->po_number ?? '-' }}</td>
+                            <td class="py-3 px-4 font-mono text-xs">
+                                @if($do->purchaseOrders->isNotEmpty())
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach($do->purchaseOrders as $lpo)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200">
+                                                {{ $lpo->po_number }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @elseif($do->purchaseOrder)
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200">
+                                        {{ $do->purchaseOrder->po_number }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-400 italic text-[11px]">— Non-PO —</span>
+                                @endif
+                            </td>
                             <td class="py-3 px-5">
                                 <div class="space-y-1">
                                     @foreach($do->items as $it)
@@ -567,7 +582,6 @@
                         'code' => $m->code,
                         'name' => $m->name,
                         'default_unit_id' => $m->default_unit_id,
-                        'standard_price' => (float)$m->standard_price,
                     ])) }},
                     units: {{ Js::from($units->map(fn($u) => [
                         'id' => $u->id,
@@ -594,9 +608,6 @@
                         this.poItems[idx].material_id = mat.id;
                         if (mat.default_unit_id) {
                             this.poItems[idx].unit_id = mat.default_unit_id;
-                        }
-                        if (mat.standard_price) {
-                            this.poItems[idx].unit_price = parseFloat(mat.standard_price) || 0;
                         }
                         this.openMaterialIdx = null;
                         this.materialSearch = '';

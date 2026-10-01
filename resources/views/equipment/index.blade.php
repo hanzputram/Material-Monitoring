@@ -237,7 +237,7 @@
 
                     <!-- Category Filter -->
                     <div class="w-full sm:w-48">
-                        <select name="category_id" onchange="this.form.submit()" class="no-custom w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
+                        <select name="category_id" onchange="this.form.submit()" class="select-clean w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
                             <option value="all">Semua Kategori</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}" {{ $categoryId == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -247,7 +247,7 @@
 
                     <!-- Status Filter -->
                     <div class="w-full sm:w-36">
-                        <select name="status" onchange="this.form.submit()" class="no-custom w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
+                        <select name="status" onchange="this.form.submit()" class="select-clean w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
                             <option value="">Semua Status</option>
                             <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Aktif</option>
                             <option value="inactive" {{ $status === 'inactive' ? 'selected' : '' }}>Non-aktif</option>
@@ -476,13 +476,13 @@
                                 </td>
                                 <td class="py-3 px-4 text-center font-semibold text-slate-600">{{ $eq->defaultUnit?->code ?? 'Unit' }}</td>
                                 <td class="py-3 px-4">
-                                    <select name="items[{{ $idx }}][source]" class="no-custom w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-800">
+                                    <select name="items[{{ $idx }}][source]" class="select-clean select-clean-sm w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-800">
                                         <option value="milik_sendiri" {{ $assigned && $assigned->source === 'milik_sendiri' ? 'selected' : '' }}>Milik Sendiri</option>
                                         <option value="sewa" {{ $assigned && $assigned->source === 'sewa' ? 'selected' : '' }}>Sewa Vendor</option>
                                     </select>
                                 </td>
                                 <td class="py-3 px-4">
-                                    <select name="items[{{ $idx }}][condition]" class="no-custom w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-800">
+                                    <select name="items[{{ $idx }}][condition]" class="select-clean select-clean-sm w-full text-xs p-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-800">
                                         <option value="baru" {{ $assigned && $assigned->condition === 'baru' ? 'selected' : '' }}>Baru</option>
                                         <option value="layak_pakai" {{ !$assigned || $assigned->condition === 'layak_pakai' ? 'selected' : '' }}>Layak Pakai</option>
                                         <option value="perlu_perbaikan" {{ $assigned && $assigned->condition === 'perlu_perbaikan' ? 'selected' : '' }}>Perlu Perbaikan</option>
@@ -638,7 +638,7 @@
                                 <button type="button" @click="showCategoryModal = true" class="text-[11px] text-blue-600 font-bold hover:underline cursor-pointer">+ Kategori Baru</button>
                             </div>
                             <select name="equipment_category_id" x-model="masterForm.equipment_category_id" required 
-                                    class="no-custom w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    class="select-clean w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
                                 @foreach($categories as $cat)
                                     <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                                 @endforeach
@@ -667,7 +667,7 @@
                         <div>
                             <label class="block font-semibold text-slate-700 text-xs mb-1">Satuan Standar <span class="text-rose-500">*</span></label>
                             <select name="default_unit_id" x-model="masterForm.default_unit_id" required 
-                                    class="no-custom w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    class="select-clean w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
                                 @foreach($units as $u)
                                     <option value="{{ $u->id }}">{{ $u->code }} - {{ $u->name }}</option>
                                 @endforeach
@@ -762,7 +762,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block font-semibold text-slate-700 text-xs mb-1">Kepemilikan</label>
-                            <select name="source" x-model="allocForm.source" class="no-custom w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium">
+                            <select name="source" x-model="allocForm.source" class="select-clean w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium">
                                 <option value="milik_sendiri">Milik Sendiri</option>
                                 <option value="sewa">Sewa Vendor</option>
                             </select>
@@ -770,7 +770,7 @@
 
                         <div>
                             <label class="block font-semibold text-slate-700 text-xs mb-1">Kondisi Fisik</label>
-                            <select name="condition" x-model="allocForm.condition" class="no-custom w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium">
+                            <select name="condition" x-model="allocForm.condition" class="select-clean w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium">
                                 <option value="baru">Baru</option>
                                 <option value="layak_pakai">Layak Pakai</option>
                                 <option value="perlu_perbaikan">Perlu Perbaikan</option>

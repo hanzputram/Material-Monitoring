@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Material;
 use App\Models\Unit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class MaterialController extends Controller
 {
@@ -25,9 +24,9 @@ class MaterialController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%")
-                  ->orWhere('specification', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('specification', 'like', "%{$search}%");
             });
         }
 
@@ -85,7 +84,7 @@ class MaterialController extends Controller
             'code' => 'nullable|string|max:50|unique:materials,code',
             'category' => 'required|string|max:50',
             'default_unit_id' => 'required|exists:units,id',
-            'standard_price' => 'required|numeric|min:0',
+            'standard_price' => 'nullable|numeric|min:0',
             'specification' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
             'is_active' => 'nullable|boolean',
@@ -94,13 +93,13 @@ class MaterialController extends Controller
             'code.unique' => 'Kode material ini sudah terdaftar.',
             'category.required' => 'Pilih kategori material.',
             'default_unit_id.required' => 'Pilih satuan standar material.',
-            'standard_price.required' => 'Masukkan estimasi harga satuan standar.',
         ]);
 
         if (empty($validated['code'])) {
             $validated['code'] = $this->generateMaterialCode($validated['category']);
         }
 
+        $validated['standard_price'] = $validated['standard_price'] ?? 0;
         $validated['is_active'] = $request->has('is_active');
 
         $material = Material::create($validated);
@@ -116,10 +115,10 @@ class MaterialController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:materials,code,' . $material->id,
+            'code' => 'required|string|max:50|unique:materials,code,'.$material->id,
             'category' => 'required|string|max:50',
             'default_unit_id' => 'required|exists:units,id',
-            'standard_price' => 'required|numeric|min:0',
+            'standard_price' => 'nullable|numeric|min:0',
             'specification' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
             'is_active' => 'nullable|boolean',
@@ -129,9 +128,9 @@ class MaterialController extends Controller
             'code.unique' => 'Kode material ini telah digunakan item lain.',
             'category.required' => 'Pilih kategori material.',
             'default_unit_id.required' => 'Pilih satuan standar material.',
-            'standard_price.required' => 'Masukkan estimasi harga satuan standar.',
         ]);
 
+        $validated['standard_price'] = $validated['standard_price'] ?? 0;
         $validated['is_active'] = $request->has('is_active');
 
         $material->update($validated);
@@ -145,10 +144,11 @@ class MaterialController extends Controller
      */
     public function toggleStatus(Material $material)
     {
-        $material->is_active = !$material->is_active;
+        $material->is_active = ! $material->is_active;
         $material->save();
 
         $statusStr = $material->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
         return redirect()->back()
             ->with('success', "Status material \"{$material->name}\" berhasil {$statusStr}.");
     }
@@ -206,7 +206,7 @@ class MaterialController extends Controller
     public function updateUnit(Request $request, Unit $unit)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:20|unique:units,code,' . $unit->id,
+            'code' => 'required|string|max:20|unique:units,code,'.$unit->id,
             'name' => 'required|string|max:100',
             'group' => 'required|string|max:50',
             'is_base_unit' => 'nullable|boolean',
@@ -260,11 +260,11 @@ class MaterialController extends Controller
         };
 
         $count = Material::where('code', 'like', "{$prefix}-%")->count() + 1;
-        $code = sprintf("%s-%03d", $prefix, $count);
+        $code = sprintf('%s-%03d', $prefix, $count);
 
         while (Material::where('code', $code)->exists()) {
             $count++;
-            $code = sprintf("%s-%03d", $prefix, $count);
+            $code = sprintf('%s-%03d', $prefix, $count);
         }
 
         return $code;

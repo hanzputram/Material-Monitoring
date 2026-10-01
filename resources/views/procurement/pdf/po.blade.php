@@ -398,6 +398,14 @@
                         @if($it->material?->specification)
                             <div style="font-size: 7.5pt; color: #64748b; margin-top: 1px;">Spek: {{ $it->material->specification }}</div>
                         @endif
+                        @if($it->rabItem)
+                            <div style="font-size: 7.5pt; color: #1d4ed8; margin-top: 2px; font-weight: bold;">
+                                Pekerjaan (RAB): [{{ $it->rabItem->item_no ?? '-' }}] {{ $it->rabItem->name }}
+                                @if($it->rabItem->rabNode)
+                                    <span style="font-weight: normal; color: #64748b;">({{ $it->rabItem->rabNode->code }} - {{ $it->rabItem->rabNode->name }})</span>
+                                @endif
+                            </div>
+                        @endif
                     </td>
                     <td class="text-right font-bold" style="color: #0f172a;">{{ format_qty($it->qty_ordered) }}</td>
                     <td class="text-center" style="color: #475569;">{{ $it->unit?->code ?? ($it->material?->defaultUnit?->code ?? '-') }}</td>

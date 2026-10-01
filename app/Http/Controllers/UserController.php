@@ -17,7 +17,7 @@ class UserController extends Controller
     protected function authorizeModule()
     {
         $currentUser = Auth::user();
-        if (!$currentUser || !$currentUser->hasModulePermission('users')) {
+        if (! $currentUser || ! $currentUser->hasModulePermission('users')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengelola Pengguna & Hak Akses sistem.');
         }
     }
@@ -162,7 +162,7 @@ class UserController extends Controller
 
         // Proteksi: Tidak boleh menonaktifkan diri sendiri
         $isActive = $request->boolean('is_active', true);
-        if (Auth::id() === $user->id && !$isActive) {
+        if (Auth::id() === $user->id && ! $isActive) {
             return back()->withErrors(['is_active' => 'Anda tidak dapat menonaktifkan akun yang sedang Anda gunakan saat ini.']);
         }
 
@@ -177,7 +177,7 @@ class UserController extends Controller
         $user->permissions = $permissions;
         $user->is_active = $isActive;
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
 

@@ -83,6 +83,18 @@ class Project extends Model
         return $this->hasMany(ProjectEquipment::class);
     }
 
+    public function projectWorkers()
+    {
+        return $this->hasMany(ProjectWorker::class);
+    }
+
+    public function workers()
+    {
+        return $this->belongsToMany(Worker::class, 'project_workers')
+            ->withPivot(['id', 'assigned_trade', 'daily_wage', 'status', 'start_date', 'end_date', 'notes'])
+            ->withTimestamps();
+    }
+
     public function costRealizations()
     {
         return $this->hasMany(CostRealization::class);

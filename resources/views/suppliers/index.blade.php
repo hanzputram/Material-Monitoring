@@ -66,21 +66,21 @@
             <div class="text-2xl font-black text-slate-900 tracking-tight">
                 {{ $stats['active_suppliers'] }}
             </div>
-            <div class="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
-                <span>Memiliki riwayat PO / Surat Jalan DO</span>
+            <div class="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
+                <span>Memiliki riwayat Pesanan / Penerimaan Pembelian</span>
             </div>
         </div>
 
         <!-- Card 3: Total DO Masuk -->
         <div class="card-clean p-4 sm:p-5 card-clean-hover">
             <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Pengiriman (DO)</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Penerimaan (DO)</span>
                 <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                 </div>
             </div>
             <div class="text-2xl font-black text-slate-900 tracking-tight">
-                {{ $stats['total_dos'] }} <span class="text-xs font-semibold text-slate-500">Surat Jalan</span>
+                {{ $stats['total_dos'] }} <span class="text-xs font-semibold text-slate-500">Penerimaan</span>
             </div>
             <div class="mt-2 text-xs text-slate-500">
                 <span>Diterima fisik di lapangan</span>
@@ -198,10 +198,10 @@
                             <!-- Transaction Counts -->
                             <td class="py-4 px-5 text-center">
                                 <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-200" title="Delivery Orders">
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-200" title="Penerimaan Pembelian (DO)">
                                         {{ $supplier->delivery_orders_count }} DO
                                     </span>
-                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-indigo-50 text-indigo-700 border border-indigo-200" title="Purchase Orders">
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-indigo-50 text-indigo-700 border border-indigo-200" title="Pesanan Pembelian (PO)">
                                         {{ $supplier->purchase_orders_count }} PO
                                     </span>
                                     <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-50 text-amber-700 border border-amber-200" title="Invoices">

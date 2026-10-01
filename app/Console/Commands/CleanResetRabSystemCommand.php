@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class CleanResetRabSystemCommand extends Command
 {
@@ -31,9 +32,9 @@ class CleanResetRabSystemCommand extends Command
      */
     public function handle(): int
     {
-        $this->info("==============================================================");
-        $this->info("  PEMBERSIHAN TOTAL DATA DUMMY & SETUP SINGLE SUPER ADMIN     ");
-        $this->info("==============================================================");
+        $this->info('==============================================================');
+        $this->info('  PEMBERSIHAN TOTAL DATA DUMMY & SETUP SINGLE SUPER ADMIN     ');
+        $this->info('==============================================================');
 
         // 1. Truncate / Delete all operational project and dummy data
         $tablesToClean = [
@@ -76,7 +77,7 @@ class CleanResetRabSystemCommand extends Command
         $this->line(" - Tabel 'users': {$userCount} akun lama dihapus.");
 
         // 3. Ensure Spatie permissions and roles are established
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $modules = array_keys(User::availableModules());
         foreach ($modules as $mod) {
@@ -103,9 +104,9 @@ class CleanResetRabSystemCommand extends Command
         $superAdmin->assignRole($superAdminRole);
 
         $this->newLine();
-        $this->info("==============================================================");
-        $this->info("  BERHASIL DISETUP: HANYA 1 AKUN SUPER ADMINISTRATOR          ");
-        $this->info("==============================================================");
+        $this->info('==============================================================');
+        $this->info('  BERHASIL DISETUP: HANYA 1 AKUN SUPER ADMINISTRATOR          ');
+        $this->info('==============================================================');
         $this->table(
             ['Parameter', 'Kredensial Akses'],
             [
@@ -121,7 +122,8 @@ class CleanResetRabSystemCommand extends Command
             ]
         );
 
-        $this->info("Sistem telah bersih 100%. Mulai sekarang pengguna harus login terlebih dahulu.");
+        $this->info('Sistem telah bersih 100%. Mulai sekarang pengguna harus login terlebih dahulu.');
+
         return Command::SUCCESS;
     }
 }

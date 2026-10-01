@@ -32,6 +32,28 @@ class DeliveryOrder extends Model
         return $this->belongsTo(PurchaseOrder::class);
     }
 
+    public function purchaseOrders()
+    {
+        return $this->belongsToMany(PurchaseOrder::class, 'delivery_order_purchase_order')->withTimestamps();
+    }
+
+    public function getLinkedPoNumbersAttribute(): string
+    {
+        $numbers = $this->purchaseOrders->pluck('po_number')->filter();
+        if ($numbers->isEmpty() && $this->purchaseOrder) {
+            return $this->purchaseOrder->po_number;
+        }
+
+        return $numbers->isNotEmpty() ? $numbers->implode(', ') : '-';
+    }
+
+    public function hasNonPoItems(): bool
+    {
+        return $this->items->contains(function ($item) {
+            return is_null($item->purchase_order_id);
+        });
+    }
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
@@ -50,6 +72,11 @@ class DeliveryOrder extends Model
     public function varianceValidations()
     {
         return $this->hasMany(MaterialVarianceValidation::class);
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(PurchaseReturn::class);
     }
 
     public function syncRealizations(): void

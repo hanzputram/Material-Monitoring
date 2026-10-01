@@ -30,9 +30,9 @@ class VarianceValidationController extends Controller
         $validations = MaterialVarianceValidation::whereHas('realization', function ($q) use ($project) {
             $q->where('project_id', $project->id);
         })
-        ->with(['realization.material.defaultUnit', 'deliveryOrder', 'invoice', 'pengawas', 'purchasing'])
-        ->orderByDesc('created_at')
-        ->get();
+            ->with(['realization.material.defaultUnit', 'deliveryOrder', 'invoice', 'pengawas', 'purchasing'])
+            ->orderByDesc('created_at')
+            ->get();
 
         $availableDos = DeliveryOrder::where('project_id', $project->id)->orderByDesc('do_date')->get();
         $availableInvoices = Invoice::where('project_id', $project->id)->orderByDesc('invoice_date')->get();

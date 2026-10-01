@@ -1,8 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Detail & Riwayat: ' . $realization->material->name . ' — K-RAB')
-@section('page_title', 'Detail & Riwayat Material')
-@section('page_subtitle', 'Analisis Komprehensif Realisasi Fisik, Riwayat Surat Jalan (DO), Faktur & Alokasi RAB')
+@section('page_subtitle', 'Analisis Komprehensif Realisasi Fisik, Riwayat Penerimaan Pembelian (DO), Faktur & Alokasi RAB')
 
 @section('content')
 <div class="space-y-6">
@@ -53,7 +52,7 @@
             <a href="{{ route('procurement.index') }}" 
                class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-xs transition-all flex-1 sm:flex-initial">
                 <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Input Surat Jalan / PO
+                Input Penerimaan / Pesanan
             </a>
         </div>
     </div>
@@ -120,7 +119,7 @@
                          style="width: {{ min($pct, 100) }}%;"></div>
                 @else
                     <div class="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">
-                        0% Belum Ada Pengiriman Surat Jalan (DO)
+                        0% Belum Ada Penerimaan Pembelian (DO)
                     </div>
                 @endif
             </div>
@@ -132,28 +131,41 @@
     </div>
 
     <!-- 3. KPI METRIC BREAKDOWN CARDS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <!-- 3. KPI METRIC BREAKDOWN CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <!-- Kuota RAB Rencana -->
-        <div class="card-clean p-5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">1. Rencana Kuota RAB</span>
+        <div class="card-clean p-4">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">1. Rencana RAB</span>
             <div class="text-2xl font-black text-slate-900 font-mono">
                 {{ format_qty($planned) }}
             </div>
-            <span class="text-xs font-bold text-slate-500">{{ $unit }} dialokasikan pada BOM</span>
+            <span class="text-xs font-bold text-slate-500">{{ $unit }} BOM Target</span>
         </div>
 
-        <!-- Realisasi Diterima (DO) -->
-        <div class="card-clean p-5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">2. Realisasi Fisik (DO)</span>
+        <!-- Total Dipesan (Pesanan Pembelian) -->
+        <div class="card-clean p-4 border-amber-200/80 bg-gradient-to-b from-amber-50/20 to-white">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700 block mb-1">2. Pesanan Pembelian (PO)</span>
+            @php
+                $totalPoQty = (float) $purchaseOrderItems->sum('qty_ordered');
+            @endphp
+            <div class="text-2xl font-black font-mono {{ $totalPoQty > 0 ? 'text-amber-700' : 'text-slate-400' }}">
+                {{ format_qty($totalPoQty) }}
+            </div>
+            <span class="text-xs font-bold text-slate-500">{{ $unit }} ({{ $purchaseOrderItems->count() }} PO)</span>
+        </div>
+
+        <!-- Realisasi Diterima (Penerimaan Pembelian) -->
+        <div class="card-clean p-4">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">3. Penerimaan Pembelian (DO)</span>
             <div class="text-2xl font-black font-mono {{ $actual > 0 ? 'text-blue-700' : 'text-slate-400' }}">
                 {{ format_qty($actual) }}
             </div>
-            <span class="text-xs font-bold text-slate-500">{{ $unit }} diterima Pengawas</span>
+            <span class="text-xs font-bold text-slate-500">{{ $unit }} Fisik Lapangan</span>
         </div>
 
         <!-- Selisih Fisik -->
-        <div class="card-clean p-5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">3. Selisih Fisik (Variance)</span>
+        <div class="card-clean p-4">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">4. Selisih (Variance)</span>
             <div class="text-2xl font-black font-mono {{ $realization->variance_qty > 0 ? 'text-rose-600' : ($realization->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">
                 {{ $realization->variance_qty > 0 ? '+' : '' }}{{ format_qty($realization->variance_qty) }}
             </div>
@@ -163,19 +175,112 @@
         </div>
 
         <!-- Total Anggaran BOM -->
-        <div class="card-clean p-5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">4. Total Anggaran RAB</span>
+        <div class="card-clean p-4 col-span-2 md:col-span-1">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">5. Anggaran RAB</span>
             @php
                 $totalRabCost = (float) $rabAllocations->sum('total_price');
             @endphp
-            <div class="text-2xl font-black text-slate-900 font-mono">
+            <div class="text-xl font-black text-slate-900 font-mono truncate" title="Rp {{ number_format($totalRabCost > 0 ? $totalRabCost : ($planned * $realization->material->standard_price), 0, ',', '.') }}">
                 Rp {{ number_format($totalRabCost > 0 ? $totalRabCost : ($planned * $realization->material->standard_price), 0, ',', '.') }}
             </div>
             <span class="text-xs font-semibold text-slate-500">Estimasi biaya material</span>
         </div>
     </div>
 
-    <!-- 4. RIWAYAT PENERIMAAN FISIK SURAT JALAN (DELIVERY ORDERS) -->
+    <!-- 4. RIWAYAT PESANAN PEMBELIAN (PO) PURCHASING -->
+    <div class="card-clean overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-slate-50/50">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-sm sm:text-base font-extrabold text-slate-900">Riwayat Pesanan Pembelian (PO)</h3>
+                    <p class="text-xs text-slate-500">Daftar pesanan resmi ke supplier rekanan beserta referensi uraian pekerjaan RAB</p>
+                </div>
+            </div>
+            <span class="badge-clean bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold self-start sm:self-auto">{{ $purchaseOrderItems->count() }} Item PO</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm border-collapse table-clean">
+                <thead>
+                    <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                        <th class="py-3 px-5">Tanggal PO</th>
+                        <th class="py-3 px-5">No. Pesanan Pembelian (PO)</th>
+                        <th class="py-3 px-5">Supplier / Rekanan</th>
+                        <th class="py-3 px-5">Uraian Pekerjaan RAB</th>
+                        <th class="py-3 px-5 text-right">Kuantiti Dipesan</th>
+                        <th class="py-3 px-5 text-right">Harga Satuan</th>
+                        <th class="py-3 px-5 text-right">Subtotal Biaya</th>
+                        <th class="py-3 px-5 text-center">Status PO</th>
+                        <th class="py-3 px-5 text-center">Unduh PDF</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    @forelse($purchaseOrderItems as $poItem)
+                        @php
+                            $po = $poItem->purchaseOrder;
+                        @endphp
+                        <tr class="hover:bg-slate-50/80 transition-colors">
+                            <td class="py-3.5 px-5 font-semibold text-slate-700 text-xs whitespace-nowrap">
+                                {{ $po?->po_date ? $po->po_date->format('d M Y') : '—' }}
+                            </td>
+                            <td class="py-3.5 px-5 font-mono font-bold text-xs text-blue-700 whitespace-nowrap">
+                                {{ $po?->po_number ?? '—' }}
+                            </td>
+                            <td class="py-3.5 px-5 text-xs font-semibold text-slate-800">
+                                {{ $po?->supplier->name ?? '—' }}
+                            </td>
+                            <td class="py-3.5 px-5 text-xs text-slate-700">
+                                @if($poItem->rabItem)
+                                    <span class="inline-flex items-center gap-1 font-semibold text-blue-800 bg-blue-50 px-2 py-0.5 rounded text-[11px] border border-blue-200">
+                                        {{ $poItem->rabItem->rabNode?->name ?? 'RAB' }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-400 italic text-[11px]">— Umum / Non-RAB —</span>
+                                @endif
+                            </td>
+                            <td class="py-3.5 px-5 text-right font-mono font-black text-xs text-slate-900 whitespace-nowrap">
+                                {{ format_qty($poItem->qty_ordered) }} {{ $poItem->unit->code ?? $unit }}
+                            </td>
+                            <td class="py-3.5 px-5 text-right font-mono text-xs text-slate-700 whitespace-nowrap">
+                                Rp {{ number_format($poItem->unit_price, 0, ',', '.') }}
+                            </td>
+                            <td class="py-3.5 px-5 text-right font-mono font-bold text-xs text-slate-900 whitespace-nowrap">
+                                Rp {{ number_format($poItem->subtotal, 0, ',', '.') }}
+                            </td>
+                            <td class="py-3.5 px-5 text-center whitespace-nowrap">
+                                <span class="badge-clean bg-emerald-100 text-emerald-800 text-[11px] capitalize">
+                                    {{ $po?->status ?? 'Aktif' }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-5 text-center whitespace-nowrap">
+                                @if($po)
+                                    <a href="{{ route('procurement.po.pdf', $po->id) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        <span>PDF</span>
+                                    </a>
+                                @else
+                                    <span class="text-slate-400 text-xs">—</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="py-10 text-center text-slate-400">
+                                <span class="font-semibold text-slate-600 block">Belum Ada Riwayat Pesanan Pembelian (PO)</span>
+                                <span class="text-xs text-slate-400 mt-1 block">Material ini belum pernah dicatat dalam dokumen Pesanan Pembelian.</span>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 5. RIWAYAT PENERIMAAN FISIK PEMBELIAN (DELIVERY ORDERS) -->
     <div class="card-clean overflow-hidden">
         <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-slate-50/50">
             <div class="flex items-center gap-3">
@@ -183,8 +288,8 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                 </div>
                 <div>
-                    <h3 class="text-sm sm:text-base font-extrabold text-slate-900">Riwayat Pengiriman & Penerimaan Fisik Surat Jalan (DO)</h3>
-                    <p class="text-xs text-slate-500">Daftar Surat Jalan fisik yang telah diterima dan diverifikasi oleh Pengawas Lapangan</p>
+                    <h3 class="text-sm sm:text-base font-extrabold text-slate-900">Riwayat Penerimaan Fisik Pembelian (DO Lapangan)</h3>
+                    <p class="text-xs text-slate-500">Daftar penerimaan fisik yang telah diterima dan diverifikasi oleh Pengawas Lapangan beserta referensi PO</p>
                 </div>
             </div>
             <span class="badge-clean bg-blue-100 text-blue-800 text-xs font-bold self-start sm:self-auto">{{ $deliveryOrderItems->count() }} Pengiriman</span>
@@ -195,7 +300,8 @@
                 <thead>
                     <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                         <th class="py-3 px-5">Tanggal Diterima</th>
-                        <th class="py-3 px-5">No. Surat Jalan (DO)</th>
+                        <th class="py-3 px-5">No. Penerimaan Pembelian (DO)</th>
+                        <th class="py-3 px-5">No. Pesanan Pembelian (PO) Ref</th>
                         <th class="py-3 px-5">Supplier / Rekanan</th>
                         <th class="py-3 px-5 text-right">Kuantiti Fisik Diterima</th>
                         <th class="py-3 px-5">Penerima Lapangan</th>
@@ -206,22 +312,37 @@
                 <tbody class="divide-y divide-slate-100 bg-white">
                     @forelse($deliveryOrderItems as $item)
                         <tr class="hover:bg-slate-50/80 transition-colors">
-                            <td class="py-3.5 px-5 font-semibold text-slate-700 text-xs">
+                            <td class="py-3.5 px-5 font-semibold text-slate-700 text-xs whitespace-nowrap">
                                 {{ $item->deliveryOrder->do_date ? $item->deliveryOrder->do_date->format('d M Y') : '—' }}
                             </td>
-                            <td class="py-3.5 px-5 font-mono font-bold text-xs text-blue-700">
+                            <td class="py-3.5 px-5 font-mono font-bold text-xs text-blue-700 whitespace-nowrap">
                                 {{ $item->deliveryOrder->do_number }}
+                            </td>
+                            <td class="py-3.5 px-5 font-mono text-xs whitespace-nowrap">
+                                @if($item->purchaseOrder)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-amber-800 bg-amber-50 border border-amber-200">
+                                        📑 {{ $item->purchaseOrder->po_number }}
+                                    </span>
+                                @elseif(!empty($item->purchase_order_id))
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-amber-800 bg-amber-50 border border-amber-200">
+                                        📑 PO #{{ $item->purchase_order_id }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-emerald-800 bg-emerald-50 border border-emerald-200">
+                                        💵 Pembelian Tunai (Non-PO)
+                                    </span>
+                                @endif
                             </td>
                             <td class="py-3.5 px-5 text-xs font-semibold text-slate-800">
                                 {{ $item->deliveryOrder->supplier->name ?? '—' }}
                             </td>
-                            <td class="py-3.5 px-5 text-right font-mono font-black text-xs text-slate-900">
+                            <td class="py-3.5 px-5 text-right font-mono font-black text-xs text-slate-900 whitespace-nowrap">
                                 {{ format_qty($item->qty_received) }} {{ $item->unit->code ?? $unit }}
                             </td>
                             <td class="py-3.5 px-5 text-xs text-slate-600">
                                 {{ $item->deliveryOrder->receiver->name ?? 'Pengawas Lapangan' }}
                             </td>
-                            <td class="py-3.5 px-5 text-center">
+                            <td class="py-3.5 px-5 text-center whitespace-nowrap">
                                 <span class="badge-clean bg-emerald-100 text-emerald-800 text-[11px]">
                                     ✓ Tervalidasi Fisik
                                 </span>
@@ -232,9 +353,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-10 text-center text-slate-400">
-                                <span class="font-semibold text-slate-600 block">Belum Ada Riwayat Surat Jalan (DO)</span>
-                                <span class="text-xs text-slate-400 mt-1 block">Material ini belum memiliki pengiriman fisik yang tercatat di sistem lapangan.</span>
+                            <td colspan="8" class="py-10 text-center text-slate-400">
+                                <span class="font-semibold text-slate-600 block">Belum Ada Riwayat Penerimaan Pembelian (DO)</span>
+                                <span class="text-xs text-slate-400 mt-1 block">Material ini belum memiliki penerimaan fisik yang tercatat di sistem lapangan.</span>
                             </td>
                         </tr>
                     @endforelse
@@ -243,7 +364,7 @@
         </div>
     </div>
 
-    <!-- 5. RIWAYAT TAGIHAN FAKTUR (INVOICES) & DUAL APPROVAL AUDIT -->
+    <!-- 6. RIWAYAT TAGIHAN FAKTUR (INVOICES) & DUAL APPROVAL AUDIT -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         <!-- Riwayat Faktur Invoice -->
@@ -267,6 +388,7 @@
                         <tr class="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                             <th class="py-2.5 px-4">Tanggal</th>
                             <th class="py-2.5 px-4">No. Invoice</th>
+                            <th class="py-2.5 px-4">No. PO Ref</th>
                             <th class="py-2.5 px-4">Supplier</th>
                             <th class="py-2.5 px-4 text-right">Nominal Tagihan</th>
                             <th class="py-2.5 px-4 text-center">Status</th>
@@ -275,19 +397,28 @@
                     <tbody class="divide-y divide-slate-100 bg-white">
                         @forelse($invoices as $inv)
                             <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="py-3 px-4 font-semibold text-slate-700">
+                                <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
                                     {{ $inv->invoice_date ? $inv->invoice_date->format('d M Y') : '—' }}
                                 </td>
-                                <td class="py-3 px-4 font-mono font-bold text-slate-900">
+                                <td class="py-3 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
                                     {{ $inv->invoice_number }}
+                                </td>
+                                <td class="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
+                                    @if($inv->purchaseOrder)
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200">
+                                            {{ $inv->purchaseOrder->po_number }}
+                                        </span>
+                                    @else
+                                        <span class="text-slate-400 italic text-[10px]">—</span>
+                                    @endif
                                 </td>
                                 <td class="py-3 px-4 text-slate-700">
                                     {{ $inv->supplier->name ?? '—' }}
                                 </td>
-                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                                     Rp {{ number_format($inv->amount, 0, ',', '.') }}
                                 </td>
-                                <td class="py-3 px-4 text-center">
+                                <td class="py-3 px-4 text-center whitespace-nowrap">
                                     <span class="badge-clean bg-emerald-100 text-emerald-800 text-[10px]">
                                         Tervalidasi
                                     </span>
@@ -295,7 +426,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="py-8 text-center text-slate-400">
+                                <td colspan="6" class="py-8 text-center text-slate-400">
                                     <span class="text-xs">Belum ada invoice terkait material ini.</span>
                                 </td>
                             </tr>

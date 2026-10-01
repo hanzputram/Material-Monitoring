@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alert;
+use App\Models\DeliveryOrderItem;
+use App\Models\Invoice;
+use App\Models\Material;
 use App\Models\MaterialRealization;
 use App\Models\MaterialVarianceValidation;
 use App\Models\Project;
-use App\Models\User;
+use App\Models\PurchaseOrderItem;
+use App\Models\RabItemMaterial;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -22,7 +25,7 @@ class DashboardController extends Controller
 
         $projectId = $request->query('project_id') ?? session('active_project_id');
         $currentProject = $projectId ? Project::find($projectId) : $projects->first();
-        if (!$currentProject) {
+        if (! $currentProject) {
             $currentProject = $projects->first();
         }
         session(['active_project_id' => $currentProject->id]);
@@ -58,7 +61,7 @@ class DashboardController extends Controller
         $chartActuals = [];
 
         foreach ($currentProject->rootRabNodes as $node) {
-            $chartCategories[] = $node->code . ' ' . (strlen($node->name) > 20 ? substr($node->name, 0, 18) . '...' : $node->name);
+            $chartCategories[] = $node->code.' '.(strlen($node->name) > 20 ? substr($node->name, 0, 18).'...' : $node->name);
             $chartBudgets[] = (float) $node->subtotal_cache;
             // Approximate actual based on invoices or proportional costs
             $chartActuals[] = (float) $node->subtotal_cache * 0.95; // Demo baseline
@@ -84,7 +87,7 @@ class DashboardController extends Controller
         foreach ($currentProject->rootRabNodes as $root) {
             $categoryGroup = [
                 'category' => $root,
-                'sections' => []
+                'sections' => [],
             ];
 
             foreach ($root->children as $sub) {
@@ -92,13 +95,13 @@ class DashboardController extends Controller
                 $subDirectMats = [];
                 foreach ($sub->rabItems as $item) {
                     foreach ($item->materials as $im) {
-                        if (!isset($subDirectMats[$im->material_id])) {
+                        if (! isset($subDirectMats[$im->material_id])) {
                             $rel = $realizations->firstWhere('material_id', $im->material_id);
                             if ($rel) {
                                 $rel->rab_category_name = $root->name;
                                 $rel->rab_category_code = $root->code;
-                                $rel->rab_category_full = $root->code . '. ' . $root->name;
-                                $rel->rab_section_title = $sub->code . ' ' . $sub->name;
+                                $rel->rab_category_full = $root->code.'. '.$root->name;
+                                $rel->rab_section_title = $sub->code.' '.$sub->name;
                                 $rel->rab_section_subtitle = null;
                                 $subDirectMats[$im->material_id] = $rel;
                                 $allMappedMaterialIds[] = $im->material_id;
@@ -107,11 +110,11 @@ class DashboardController extends Controller
                     }
                 }
 
-                if (!empty($subDirectMats)) {
+                if (! empty($subDirectMats)) {
                     $categoryGroup['sections'][] = [
-                        'title' => $sub->code . ' ' . $sub->name,
+                        'title' => $sub->code.' '.$sub->name,
                         'subtitle' => null,
-                        'materials' => array_values($subDirectMats)
+                        'materials' => array_values($subDirectMats),
                     ];
                 }
 
@@ -120,14 +123,14 @@ class DashboardController extends Controller
                     $subSubMats = [];
                     foreach ($subSub->rabItems as $item) {
                         foreach ($item->materials as $im) {
-                            if (!isset($subSubMats[$im->material_id])) {
+                            if (! isset($subSubMats[$im->material_id])) {
                                 $rel = $realizations->firstWhere('material_id', $im->material_id);
                                 if ($rel) {
                                     $rel->rab_category_name = $root->name;
                                     $rel->rab_category_code = $root->code;
-                                    $rel->rab_category_full = $root->code . '. ' . $root->name;
-                                    $rel->rab_section_title = $sub->code . ' ' . $sub->name;
-                                    $rel->rab_section_subtitle = $subSub->code . ' ' . $subSub->name;
+                                    $rel->rab_category_full = $root->code.'. '.$root->name;
+                                    $rel->rab_section_title = $sub->code.' '.$sub->name;
+                                    $rel->rab_section_subtitle = $subSub->code.' '.$subSub->name;
                                     $subSubMats[$im->material_id] = $rel;
                                     $allMappedMaterialIds[] = $im->material_id;
                                 }
@@ -135,36 +138,36 @@ class DashboardController extends Controller
                         }
                     }
 
-                    if (!empty($subSubMats)) {
+                    if (! empty($subSubMats)) {
                         $categoryGroup['sections'][] = [
-                            'title' => $sub->code . ' ' . $sub->name,
-                            'subtitle' => $subSub->code . ' ' . $subSub->name,
-                            'materials' => array_values($subSubMats)
+                            'title' => $sub->code.' '.$sub->name,
+                            'subtitle' => $subSub->code.' '.$subSub->name,
+                            'materials' => array_values($subSubMats),
                         ];
                     }
                 }
             }
 
-            if (!empty($categoryGroup['sections'])) {
+            if (! empty($categoryGroup['sections'])) {
                 $treeRealizations[] = $categoryGroup;
             }
         }
 
         // 7. Non-RAB Purchases Recap (Pembelian & Pengadaan di Luar RAB / Unbudgeted)
         // Pengawasan material yang dipesan / diterima tetapi TIDAK ADA di struktur alokasi RAB Tree proyek
-        $nonRabPoItems = \App\Models\PurchaseOrderItem::whereHas('purchaseOrder', function ($q) use ($currentProject) {
+        $nonRabPoItems = PurchaseOrderItem::whereHas('purchaseOrder', function ($q) use ($currentProject) {
             $q->where('project_id', $currentProject->id);
         })
-        ->whereNotIn('material_id', $allMappedMaterialIds)
-        ->with(['material.defaultUnit', 'purchaseOrder.supplier', 'unit'])
-        ->get();
+            ->whereNotIn('material_id', $allMappedMaterialIds)
+            ->with(['material.defaultUnit', 'purchaseOrder.supplier', 'unit'])
+            ->get();
 
-        $nonRabDoItems = \App\Models\DeliveryOrderItem::whereHas('deliveryOrder', function ($q) use ($currentProject) {
+        $nonRabDoItems = DeliveryOrderItem::whereHas('deliveryOrder', function ($q) use ($currentProject) {
             $q->where('project_id', $currentProject->id);
         })
-        ->whereNotIn('material_id', $allMappedMaterialIds)
-        ->with(['material.defaultUnit', 'deliveryOrder.supplier', 'deliveryOrder.receiver', 'unit'])
-        ->get();
+            ->whereNotIn('material_id', $allMappedMaterialIds)
+            ->with(['material.defaultUnit', 'deliveryOrder.supplier', 'deliveryOrder.receiver', 'unit'])
+            ->get();
 
         $nonRabRealizations = $realizations->whereNotIn('material_id', $allMappedMaterialIds);
 
@@ -183,22 +186,24 @@ class DashboardController extends Controller
             $mDoItems = $nonRabDoItems->where('material_id', $matId);
             $mRealization = $nonRabRealizations->firstWhere('material_id', $matId);
 
-            $mat = $mPoItems->first()?->material 
-                ?? $mDoItems->first()?->material 
-                ?? $mRealization?->material 
-                ?? \App\Models\Material::with('defaultUnit')->find($matId);
+            $mat = $mPoItems->first()?->material
+                ?? $mDoItems->first()?->material
+                ?? $mRealization?->material
+                ?? Material::with('defaultUnit')->find($matId);
 
-            if (!$mat) continue;
+            if (! $mat) {
+                continue;
+            }
 
             $poQty = (float) $mPoItems->sum('qty_ordered');
-            $poCost = (float) $mPoItems->sum(fn($it) => (float)$it->qty_ordered * (float)$it->unit_price);
+            $poCost = (float) $mPoItems->sum(fn ($it) => (float) $it->qty_ordered * (float) $it->unit_price);
             $doQty = (float) $mDoItems->sum('qty_received');
 
             $totalNonRabPoCost += $poCost;
             $totalNonRabDoQty += $doQty;
 
-            $pos = $mPoItems->map(fn($it) => $it->purchaseOrder)->filter()->unique('id');
-            $dos = $mDoItems->map(fn($it) => $it->deliveryOrder)->filter()->unique('id');
+            $pos = $mPoItems->map(fn ($it) => $it->purchaseOrder)->filter()->unique('id');
+            $dos = $mDoItems->map(fn ($it) => $it->deliveryOrder)->filter()->unique('id');
 
             // Fulfillment status
             if ($poQty > 0 && $doQty >= $poQty) {
@@ -228,7 +233,7 @@ class DashboardController extends Controller
                 'unit' => $mat->defaultUnit?->code ?? '-',
                 'po_qty' => $poQty,
                 'po_cost' => $poCost,
-                'avg_unit_price' => $poQty > 0 ? ($poCost / $poQty) : (float)($mat->standard_price ?? 0),
+                'avg_unit_price' => $poQty > 0 ? ($poCost / $poQty) : (float) ($mat->standard_price ?? 0),
                 'do_qty' => $doQty,
                 'pos' => $pos->values()->all(),
                 'dos' => $dos->values()->all(),
@@ -268,16 +273,32 @@ class DashboardController extends Controller
         $projects = Project::orderBy('name')->get();
 
         // 1. Delivery Order receipts for this material and project
-        $deliveryOrderItems = \App\Models\DeliveryOrderItem::where('material_id', $realization->material_id)
+        $deliveryOrderItems = DeliveryOrderItem::where('material_id', $realization->material_id)
             ->whereHas('deliveryOrder', function ($q) use ($currentProject) {
                 $q->where('project_id', $currentProject->id);
             })
-            ->with(['deliveryOrder.supplier', 'deliveryOrder.receiver', 'unit'])
+            ->with([
+                'deliveryOrder.supplier',
+                'deliveryOrder.receiver',
+                'deliveryOrder.purchaseOrders',
+                'deliveryOrder.purchaseOrder',
+                'purchaseOrder',
+                'unit',
+            ])
             ->orderByDesc('id')
             ->get();
 
-        // 2. Invoices related to this material or through validations
-        $invoices = \App\Models\Invoice::where('project_id', $currentProject->id)
+        // 2. Purchase Order items for this material and project
+        $purchaseOrderItems = PurchaseOrderItem::where('material_id', $realization->material_id)
+            ->whereHas('purchaseOrder', function ($q) use ($currentProject) {
+                $q->where('project_id', $currentProject->id);
+            })
+            ->with(['purchaseOrder.supplier', 'purchaseOrder.creator', 'rabItem.rabNode', 'unit'])
+            ->orderByDesc('id')
+            ->get();
+
+        // 3. Invoices related to this material or through validations
+        $invoices = Invoice::where('project_id', $currentProject->id)
             ->where(function ($query) use ($realization) {
                 $query->whereHas('purchaseOrder.items', function ($q) use ($realization) {
                     $q->where('material_id', $realization->material_id);
@@ -289,13 +310,13 @@ class DashboardController extends Controller
             ->orderByDesc('invoice_date')
             ->get();
 
-        // 3. Dual Approval Variance Validations
-        $validations = \App\Models\MaterialVarianceValidation::where('material_realization_id', $realization->id)
+        // 4. Dual Approval Variance Validations
+        $validations = MaterialVarianceValidation::where('material_realization_id', $realization->id)
             ->with(['deliveryOrder.supplier', 'invoice.supplier', 'pengawasUser', 'purchasingUser'])
             ->get();
 
-        // 4. RAB Tree Allocations (Where in the project's RAB is this material budgeted)
-        $rabAllocations = \App\Models\RabItemMaterial::where('material_id', $realization->material_id)
+        // 5. RAB Tree Allocations (Where in the project's RAB is this material budgeted)
+        $rabAllocations = RabItemMaterial::where('material_id', $realization->material_id)
             ->whereHas('rabItem.rabNode', function ($q) use ($currentProject) {
                 $q->where('project_id', $currentProject->id);
             })
@@ -307,6 +328,7 @@ class DashboardController extends Controller
             'currentProject',
             'projects',
             'deliveryOrderItems',
+            'purchaseOrderItems',
             'invoices',
             'validations',
             'rabAllocations'
@@ -317,6 +339,7 @@ class DashboardController extends Controller
     {
         $request->validate(['project_id' => 'required|exists:projects,id']);
         session(['active_project_id' => $request->project_id]);
+
         return redirect()->back();
     }
 }

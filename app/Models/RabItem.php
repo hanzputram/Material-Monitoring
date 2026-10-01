@@ -76,4 +76,9 @@ class RabItem extends Model
     {
         return $this->hasOne(CostRealization::class, 'rab_item_id');
     }
+
+    public function purchaseOrderItems()
+    {
+        return $this->hasMany(PurchaseOrderItem::class, 'rab_item_id');
+    }
 }

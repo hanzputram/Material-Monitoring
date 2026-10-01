@@ -1,27 +1,39 @@
 /**
- * Modern Custom Dropdown Component System
- * Replaces native Windows browser select popups with elegant floating cards
+ * Enterprise Custom Dropdown Component System
+ * Replaces native browser select popups with elegant, searchable, floating dropdown cards.
+ * Fully compatible with Alpine.js (x-model), reactive bindings, dynamic options, and form validation.
  */
 
 export function initCustomSelect(select) {
     if (!select || 
         select.dataset.customSelect === 'true' || 
-        select.closest('template') || 
-        select.closest('[x-for]') || 
-        select.hasAttribute(':name') || 
-        select.hasAttribute('x-model') || 
-        select.classList.contains('no-custom')
+        select.closest('template')
     ) {
         return;
     }
     select.dataset.customSelect = 'true';
 
-    // Hide native select visually while keeping it in the form for submission
-    select.style.setProperty('display', 'none', 'important');
+    // Visually hide native select while keeping it focusable/validatable by browser forms
+    select.style.position = 'absolute';
+    select.style.width = '1px';
+    select.style.height = '1px';
+    select.style.padding = '0';
+    select.style.margin = '-1px';
+    select.style.overflow = 'hidden';
+    select.style.clip = 'rect(0, 0, 0, 0)';
+    select.style.whiteSpace = 'nowrap';
+    select.style.border = '0';
+    select.style.opacity = '0';
+    select.style.pointerEvents = 'none';
+    select.tabIndex = -1;
 
-    // Create wrapper
+    // Detect size variant
+    const isSm = select.classList.contains('select-clean-sm') || 
+                 select.classList.contains('text-xs') || 
+                 select.closest('table') !== null;
+
+    // Create custom wrapper
     const wrapper = document.createElement('div');
-    const isSm = select.classList.contains('select-clean-sm');
     wrapper.className = `relative inline-block w-full text-left custom-dropdown-root ${isSm ? 'custom-dropdown-sm' : ''}`;
 
     // Trigger Button
@@ -32,7 +44,7 @@ export function initCustomSelect(select) {
     
     // Text container
     const textSpan = document.createElement('span');
-    textSpan.className = 'truncate block flex-1';
+    textSpan.className = 'truncate block flex-1 font-semibold text-slate-800';
     button.appendChild(textSpan);
 
     // Chevron SVG
@@ -49,66 +61,95 @@ export function initCustomSelect(select) {
     // Floating Menu Panel
     const menu = document.createElement('div');
     menu.style.display = 'none';
-    menu.className = 'absolute z-[9999] mt-1.5 w-full min-w-full bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 transition-all flex-col';
+    menu.className = 'absolute z-[9999] min-w-full w-full bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 transition-all flex flex-col';
 
-    // Search input (created dynamically if options > 5)
+    // Search input
     let searchWrap = null;
     let searchInput = null;
 
     // List Container
     const listWrap = document.createElement('div');
-    listWrap.className = 'overflow-y-auto flex-1 max-h-56 px-1 py-0.5 space-y-0.5 custom-scrollbar';
+    listWrap.className = 'overflow-y-auto flex-1 max-h-60 px-1 py-0.5 space-y-0.5 custom-scrollbar';
     menu.appendChild(listWrap);
+
+    let activeHoverIndex = -1;
+    let visibleItems = [];
 
     function updateButtonLabel() {
         const curOpt = select.selectedOptions[0] || select.options[0];
         const val = select.value;
         const text = curOpt ? curOpt.textContent.trim() : (select.getAttribute('placeholder') || '-- Pilih --');
         textSpan.textContent = text;
-        if (!val || text.startsWith('--')) {
+        
+        if (!val || text.startsWith('--') || text.toLowerCase().includes('pilih')) {
             textSpan.className = 'truncate block flex-1 font-normal text-slate-400';
         } else {
             textSpan.className = 'truncate block flex-1 font-semibold text-slate-800';
+        }
+
+        // Disabled sync
+        if (select.disabled) {
+            button.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-60');
+            button.disabled = true;
+        } else {
+            button.classList.remove('bg-slate-100', 'cursor-not-allowed', 'opacity-60');
+            button.disabled = false;
         }
     }
 
     // Render Option items
     function renderOptions(filter = '') {
         const currentOptions = Array.from(select.options);
+        visibleItems = [];
+        activeHoverIndex = -1;
 
         // Ensure search bar exists if options > 5
-        if (currentOptions.length > 5 && !searchWrap) {
-            searchWrap = document.createElement('div');
-            searchWrap.className = 'p-2 border-b border-slate-100 flex-shrink-0';
-            searchInput = document.createElement('input');
-            searchInput.type = 'text';
-            searchInput.placeholder = 'Cari opsi...';
-            searchInput.className = 'w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all';
-            searchWrap.appendChild(searchInput);
-            menu.insertBefore(searchWrap, listWrap);
+        if (currentOptions.length > 5) {
+            if (!searchWrap) {
+                searchWrap = document.createElement('div');
+                searchWrap.className = 'p-2 border-b border-slate-100 flex-shrink-0';
+                searchInput = document.createElement('input');
+                searchInput.type = 'text';
+                searchInput.placeholder = 'Cari pilihan...';
+                searchInput.className = 'w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium';
+                searchWrap.appendChild(searchInput);
+                menu.insertBefore(searchWrap, listWrap);
 
-            searchInput.addEventListener('input', (e) => {
-                renderOptions(e.target.value);
-            });
-            searchInput.addEventListener('click', (e) => e.stopPropagation());
+                searchInput.addEventListener('input', (e) => {
+                    renderOptions(e.target.value);
+                });
+                searchInput.addEventListener('click', (e) => e.stopPropagation());
+                searchInput.addEventListener('keydown', (e) => {
+                    handleKeyNavigation(e);
+                });
+            }
+        } else if (searchWrap) {
+            searchWrap.remove();
+            searchWrap = null;
+            searchInput = null;
         }
 
         listWrap.innerHTML = '';
-        const filterLower = filter.toLowerCase();
+        const filterLower = filter.toLowerCase().trim();
         let matchCount = 0;
 
         currentOptions.forEach((opt) => {
             const label = opt.textContent.trim();
-            if (filter && !label.toLowerCase().includes(filterLower)) {
+            if (filterLower && !label.toLowerCase().includes(filterLower)) {
                 return;
             }
             matchCount++;
             const isSelected = String(opt.value) === String(select.value);
+            const isDisabled = opt.disabled;
+
             const item = document.createElement('div');
-            item.className = `px-3 py-2 text-xs rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
-                isSelected 
-                    ? 'bg-blue-50 text-blue-700 font-bold' 
-                    : 'text-slate-700 hover:bg-slate-100 font-medium'
+            item.dataset.value = opt.value;
+            item.className = `px-3 py-2 text-xs rounded-lg flex items-center justify-between transition-colors ${
+                isDisabled
+                    ? 'text-slate-400 cursor-not-allowed italic opacity-60'
+                    : isSelected 
+                        ? 'bg-blue-50 text-blue-700 font-bold cursor-pointer' 
+                        : 'text-slate-700 hover:bg-slate-100 font-medium cursor-pointer'
             }`;
             
             const itemText = document.createElement('span');
@@ -126,25 +167,13 @@ export function initCustomSelect(select) {
                 item.appendChild(checkSvg);
             }
 
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                select.value = opt.value;
-                updateButtonLabel();
-                closeMenu();
-                
-                // Dispatch native events
-                select.dispatchEvent(new Event('change', { bubbles: true }));
-                select.dispatchEvent(new Event('input', { bubbles: true }));
-
-                // Execute onchange attribute if present
-                if (select.getAttribute('onchange')) {
-                    try {
-                        new Function(select.getAttribute('onchange')).call(select);
-                    } catch(err) {
-                        console.error('Error executing inline onchange:', err);
-                    }
-                }
-            });
+            if (!isDisabled) {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectOption(opt.value);
+                });
+                visibleItems.push(item);
+            }
 
             listWrap.appendChild(item);
         });
@@ -157,26 +186,96 @@ export function initCustomSelect(select) {
         }
     }
 
-    updateButtonLabel();
-    renderOptions();
+    function selectOption(val) {
+        select.value = val;
+        updateButtonLabel();
+        closeMenu();
+        
+        // Clear any validation error styling
+        button.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+
+        // Dispatch events for Alpine.js x-model and native listeners
+        select.dispatchEvent(new Event('input', { bubbles: true }));
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // Execute inline onchange attribute if present
+        if (select.getAttribute('onchange')) {
+            try {
+                new Function(select.getAttribute('onchange')).call(select);
+            } catch(err) {
+                console.error('Error executing inline onchange:', err);
+            }
+        }
+    }
+
+    function handleKeyNavigation(e) {
+        if (!visibleItems.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeHoverIndex = (activeHoverIndex + 1) % visibleItems.length;
+            highlightItem(activeHoverIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeHoverIndex = (activeHoverIndex - 1 + visibleItems.length) % visibleItems.length;
+            highlightItem(activeHoverIndex);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeHoverIndex >= 0 && visibleItems[activeHoverIndex]) {
+                selectOption(visibleItems[activeHoverIndex].dataset.value);
+            }
+        } else if (e.key === 'Escape') {
+            closeMenu();
+            button.focus();
+        }
+    }
+
+    function highlightItem(index) {
+        visibleItems.forEach((it, i) => {
+            if (i === index) {
+                it.classList.add('bg-slate-100', 'text-slate-900');
+                it.scrollIntoView({ block: 'nearest' });
+            } else if (!it.classList.contains('bg-blue-50')) {
+                it.classList.remove('bg-slate-100', 'text-slate-900');
+            }
+        });
+    }
 
     function openMenu() {
-        // Close other open custom menus
+        if (select.disabled) return;
+
+        // Close any other open dropdowns across the page
         document.querySelectorAll('.custom-dropdown-root .custom-menu-open').forEach(m => {
             if (m !== menu) {
                 m.style.display = 'none';
                 m.classList.remove('custom-menu-open');
-                const btn = m.parentElement.querySelector('button svg');
-                if (btn) btn.classList.remove('rotate-180');
+                const btnSvg = m.parentElement.querySelector('button svg');
+                if (btnSvg) btnSvg.classList.remove('rotate-180');
             }
         });
+
+        // Smart Positioning: open upward if near bottom of viewport
+        const rect = button.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow < 230 && spaceAbove > spaceBelow) {
+            menu.style.bottom = 'calc(100% + 4px)';
+            menu.style.top = 'auto';
+        } else {
+            menu.style.top = 'calc(100% + 4px)';
+            menu.style.bottom = 'auto';
+        }
 
         menu.style.display = 'flex';
         menu.classList.add('custom-menu-open');
         chevronSvg.classList.add('rotate-180');
+        
+        updateButtonLabel();
         renderOptions(searchInput ? searchInput.value : '');
+
         if (searchInput) {
-            setTimeout(() => searchInput.focus(), 50);
+            setTimeout(() => searchInput.focus(), 60);
         }
     }
 
@@ -187,6 +286,7 @@ export function initCustomSelect(select) {
         if (searchInput) {
             searchInput.value = '';
         }
+        activeHoverIndex = -1;
     }
 
     button.addEventListener('click', (e) => {
@@ -198,7 +298,18 @@ export function initCustomSelect(select) {
         }
     });
 
-    // Close on click outside using window capture phase so @click.stop inside modals doesn't block it
+    button.addEventListener('keydown', (e) => {
+        if (menu.style.display === 'none') {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openMenu();
+            }
+        } else {
+            handleKeyNavigation(e);
+        }
+    });
+
+    // Close on click outside (capture phase so @click.stop inside modals doesn't block it)
     window.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) {
             closeMenu();
@@ -212,18 +323,79 @@ export function initCustomSelect(select) {
         }
     });
 
-    // Keep button label in sync if select value is modified from script
+    // Handle HTML5 validation states
+    select.addEventListener('invalid', () => {
+        button.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+        button.focus();
+    });
+    select.addEventListener('input', () => {
+        button.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    });
+
+    // Keep button label in sync when select value is modified
     select.addEventListener('change', () => {
         updateButtonLabel();
     });
 
-    // Append menu and insert wrapper into DOM right after select
+    // Intercept property descriptor of `value` & `selectedIndex` so Alpine.js x-model updates reflect immediately
+    const origValueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    if (origValueDescriptor) {
+        Object.defineProperty(select, 'value', {
+            get() {
+                return origValueDescriptor.get.call(this);
+            },
+            set(val) {
+                origValueDescriptor.set.call(this, val);
+                updateButtonLabel();
+            }
+        });
+    }
+
+    const origIndexDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
+    if (origIndexDescriptor) {
+        Object.defineProperty(select, 'selectedIndex', {
+            get() {
+                return origIndexDescriptor.get.call(this);
+            },
+            set(idx) {
+                origIndexDescriptor.set.call(this, idx);
+                updateButtonLabel();
+            }
+        });
+    }
+
+    // Observer for dynamic options changes (<option> added/removed/selected)
+    const optObserver = new MutationObserver(() => {
+        updateButtonLabel();
+        if (menu.style.display !== 'none') {
+            renderOptions(searchInput ? searchInput.value : '');
+        }
+    });
+    optObserver.observe(select, { 
+        childList: true, 
+        subtree: true, 
+        attributes: true, 
+        attributeFilter: ['selected', 'disabled'] 
+    });
+
+    // Synchronize form reset
+    if (select.form) {
+        select.form.addEventListener('reset', () => {
+            setTimeout(updateButtonLabel, 20);
+        });
+    }
+
+    updateButtonLabel();
+    renderOptions();
+
+    // Append menu to wrapper and insert wrapper into DOM right after select
     wrapper.appendChild(menu);
     select.parentNode.insertBefore(wrapper, select.nextSibling);
 }
 
 export function initAllCustomSelects(container = document) {
-    container.querySelectorAll('select:not(.no-custom)').forEach(select => {
+    if (!container || !container.querySelectorAll) return;
+    container.querySelectorAll('select').forEach(select => {
         if (!select.classList.contains('select-clean')) {
             select.classList.add('select-clean');
         }

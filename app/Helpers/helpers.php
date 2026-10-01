@@ -2,7 +2,7 @@
 
 use App\Helpers\NumberHelper;
 
-if (!function_exists('format_qty')) {
+if (! function_exists('format_qty')) {
     /**
      * Format kuantiti tanpa .0000 jika bilangan bulat
      */
@@ -12,7 +12,7 @@ if (!function_exists('format_qty')) {
     }
 }
 
-if (!function_exists('format_rupiah')) {
+if (! function_exists('format_rupiah')) {
     /**
      * Format rupiah rapi tanpa desimal jika bulat
      */

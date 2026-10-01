@@ -243,7 +243,7 @@
 
                     <!-- Category Filter Dropdown -->
                     <div class="w-full sm:w-48">
-                        <select name="category" onchange="this.form.submit()" class="no-custom w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
+                        <select name="category" onchange="this.form.submit()" class="select-clean w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
                             <option value="all">Semua Kategori</option>
                             @foreach($categories as $catKey => $catLabel)
                                 <option value="{{ $catKey }}" {{ $category === $catKey ? 'selected' : '' }}>{{ $catLabel }}</option>
@@ -253,7 +253,7 @@
 
                     <!-- Status Filter Dropdown -->
                     <div class="w-full sm:w-36">
-                        <select name="status" onchange="this.form.submit()" class="no-custom w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
+                        <select name="status" onchange="this.form.submit()" class="select-clean w-full text-xs py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
                             <option value="">Semua Status</option>
                             <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Aktif</option>
                             <option value="inactive" {{ $status === 'inactive' ? 'selected' : '' }}>Non-aktif</option>
@@ -281,7 +281,6 @@
                             <th class="py-3 px-4">Kode & Nama Material</th>
                             <th class="py-3 px-4">Kategori</th>
                             <th class="py-3 px-3 text-center">Satuan</th>
-                            <th class="py-3 px-4 text-right">Harga Baseline (Rp)</th>
                             <th class="py-3 px-4">Spesifikasi Teknis</th>
                             <th class="py-3 px-4 text-center">Status</th>
                             <th class="py-3 px-4 text-center">Aksi</th>
@@ -321,9 +320,6 @@
                                     <span class="font-mono font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs border border-slate-200/80">
                                         {{ $mat->defaultUnit?->code ?? '-' }}
                                     </span>
-                                </td>
-                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                                    Rp {{ number_format($mat->standard_price, 0, ',', '.') }}
                                 </td>
                                 <td class="py-3 px-4">
                                     @if($mat->specification)
@@ -544,13 +540,6 @@
                                     @endforeach
                                 </select>
                             </div>
-                        </div>
-
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Estimasi Harga Satuan Baseline (Rp) <span class="text-rose-500">*</span></label>
-                            <input type="number" step="any" name="standard_price" x-model="materialData.standard_price" required placeholder="0" 
-                                   class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
-                            <span class="text-[10px] text-slate-400 mt-0.5 block">Harga referensi default saat menambahkan ke BOM RAB atau PO.</span>
                         </div>
 
                         <div>

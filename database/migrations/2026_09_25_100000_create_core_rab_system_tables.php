@@ -206,7 +206,7 @@ return new class extends Migration
             $table->foreignId('material_realization_id')->constrained('material_realizations')->cascadeOnDelete();
             $table->foreignId('delivery_order_id')->nullable()->constrained('delivery_orders')->nullOnDelete();
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
-            
+
             // Pengawas validation
             $table->foreignId('pengawas_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('pengawas_validated_at')->nullable();

@@ -6,10 +6,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Sistem Material Monitoring & RAB Konstruksi')</title>
 
-    <!-- Google Fonts: Plus Jakarta Sans -->
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -145,7 +145,7 @@
                                 <svg class="w-5 h-5 {{ request()->routeIs('rab.builder') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
                                 </svg>
-                                RAB Tree Builder & BOM
+                                Pembuatan RAB
                             </a>
                             <a href="{{ route('rab.import.form') }}" 
                                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('rab.import.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
@@ -160,40 +160,40 @@
             @endif
 
             <!-- GROUP 3: PENGADAAN & LAPANGAN -->
-            @if(auth()->user()?->canReadPo() || auth()->user()?->canReadDo() || auth()->user()?->canReadInvoice() || auth()->user()?->hasModulePermission('suppliers') || auth()->user()?->hasModulePermission('materials') || auth()->user()?->hasModulePermission('variance'))
+            @if(auth()->user()?->canReadPo() || auth()->user()?->canReadDo() || auth()->user()?->canReadReturn() || auth()->user()?->hasModulePermission('suppliers') || auth()->user()?->hasModulePermission('materials') || auth()->user()?->hasModulePermission('variance'))
                 <div>
                     <p class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pengadaan & Lapangan</p>
                     <div class="space-y-1">
-                        <!-- 1. Purchase Order (PO) -->
+                        <!-- 1. Pesanan Pembelian (PO) -->
                         @if(auth()->user()?->canReadPo())
                             <a href="{{ route('procurement.po.index') }}" 
                                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('procurement.po.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                                 <svg class="w-5 h-5 {{ request()->routeIs('procurement.po.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                 </svg>
-                                <span>Purchase Order (PO)</span>
+                                <span>Pesanan Pembelian</span>
                             </a>
                         @endif
 
-                        <!-- 2. Surat Jalan (DO Lapangan) -->
+                        <!-- 2. Penerimaan Barang (DO Lapangan) -->
                         @if(auth()->user()?->canReadDo())
                             <a href="{{ route('procurement.do.index') }}" 
                                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('procurement.do.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                                 <svg class="w-5 h-5 {{ request()->routeIs('procurement.do.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                 </svg>
-                                <span>Surat Jalan (DO Lapangan)</span>
+                                <span>Penerimaan Barang</span>
                             </a>
                         @endif
 
-                        <!-- 3. Faktur Tagihan (Invoice) -->
-                        @if(auth()->user()?->canReadInvoice())
-                            <a href="{{ route('procurement.invoices.index') }}" 
-                               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('procurement.invoices.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
-                                <svg class="w-5 h-5 {{ request()->routeIs('procurement.invoices.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <!-- 3. Retur Pembelian -->
+                        @if(auth()->user()?->canReadReturn())
+                            <a href="{{ route('procurement.returns.index') }}" 
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('procurement.returns.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                                <svg class="w-5 h-5 {{ request()->routeIs('procurement.returns.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                                 </svg>
-                                <span>Faktur Tagihan (Invoice)</span>
+                                <span>Retur Pembelian</span>
                             </a>
                         @endif
 
@@ -211,7 +211,7 @@
                             <a href="{{ route('materials.index') }}" 
                                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('materials.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                                 <svg class="w-5 h-5 {{ request()->routeIs('materials.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
                                 </svg>
                                 <span>Master Item & Material</span>
                             </a>
@@ -238,10 +238,61 @@
                 </div>
             @endif
 
-            <!-- GROUP 4: SUMBER DAYA & ALAT -->
-            @if(auth()->user()?->hasAnyModulePermission(['equipment', 'alerts']))
+            <!-- GROUP 4: KEUANGAN & PEMBAYARAN -->
+            @if(auth()->user()?->canReadDownPayment() || auth()->user()?->canReadInvoice() || auth()->user()?->canReadPayment() || auth()->user()?->hasModulePermission('finance') || auth()->user()?->isSuperAdmin())
                 <div>
-                    <p class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Alat & Notifikasi</p>
+                    <p class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Keuangan & Pembayaran</p>
+                    <div class="space-y-1">
+                        <!-- 1. Uang Muka Pembelian -->
+                        @if(auth()->user()?->canReadDownPayment())
+                            <a href="{{ route('finance.down-payments.index') }}" 
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('finance.down-payments.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                                <svg class="w-5 h-5 {{ request()->routeIs('finance.down-payments.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <span>Uang Muka Pembelian</span>
+                            </a>
+                        @endif
+
+                        <!-- 2. Faktur Pembelian (Invoice) -->
+                        @if(auth()->user()?->canReadInvoice())
+                            <a href="{{ route('procurement.invoices.index') }}" 
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('procurement.invoices.*') || request()->routeIs('finance.invoices.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                                <svg class="w-5 h-5 {{ request()->routeIs('procurement.invoices.*') || request()->routeIs('finance.invoices.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <span>Faktur Pembelian</span>
+                            </a>
+                        @endif
+
+                        <!-- 3. Pembayaran Pembelian -->
+                        @if(auth()->user()?->canReadPayment())
+                            <a href="{{ route('finance.payments.index') }}" 
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('finance.payments.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                                <svg class="w-5 h-5 {{ request()->routeIs('finance.payments.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>Pembayaran Pembelian</span>
+                            </a>
+                        @endif
+
+                        <!-- 4. Summary Pembelian Toko (Lintas Proyek) -->
+                        <a href="{{ route('finance.supplier-summary.index') }}" 
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('finance.supplier-summary.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                            <svg class="w-5 h-5 {{ request()->routeIs('finance.supplier-summary.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
+                            <span class="flex-1">Rekap Pembelian Toko</span>
+                            <span class="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-100 text-emerald-800 rounded">Lintas</span>
+                        </a>
+                    </div>
+                </div>
+            @endif
+
+            <!-- GROUP 5: SUMBER DAYA & TENAGA KERJA -->
+            @if(auth()->user()?->hasAnyModulePermission(['equipment', 'workers', 'alerts']))
+                <div>
+                    <p class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sumber Daya & Tenaga Kerja</p>
                     <div class="space-y-1">
                         @if(auth()->user()?->hasModulePermission('equipment'))
                             <a href="{{ route('equipment.index') }}" 
@@ -250,7 +301,17 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
-                                Master Alat & Mesin
+                                <span>Master Alat & Mesin</span>
+                            </a>
+                        @endif
+
+                        @if(auth()->user()?->hasModulePermission('workers'))
+                            <a href="{{ route('workers.index') }}" 
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('workers.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                                <svg class="w-5 h-5 {{ request()->routeIs('workers.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <span>Pekerja / Tukang</span>
                             </a>
                         @endif
 
@@ -392,7 +453,7 @@
         </header>
 
         <!-- MAIN SCROLLABLE VIEW -->
-        <main class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
+        <main class="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 xl:p-7">
             <!-- Flash Messages -->
             @if(session('success'))
                 <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between shadow-sm" x-data="{ show: true }" x-show="show">

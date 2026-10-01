@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (m.addedNodes.length > 0) {
                 for (const node of m.addedNodes) {
                     if (node.nodeType === 1 && !node.classList.contains('custom-dropdown-root') && !node.closest?.('.custom-dropdown-root')) {
-                        if (node.matches && node.matches('select.select-clean')) {
+                        if (node.matches && node.matches('select')) {
                             initCustomSelect(node);
                         } else if (node.querySelectorAll) {
                             initAllCustomSelects(node);
@@ -28,6 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+});
+
+document.addEventListener('alpine:initialized', () => {
+    initAllCustomSelects();
 });
 
 Alpine.start();

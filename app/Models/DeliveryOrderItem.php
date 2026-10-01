@@ -8,6 +8,7 @@ class DeliveryOrderItem extends Model
 {
     protected $fillable = [
         'delivery_order_id',
+        'purchase_order_id',
         'material_id',
         'qty_received',
         'unit_id',
@@ -20,6 +21,11 @@ class DeliveryOrderItem extends Model
     public function deliveryOrder()
     {
         return $this->belongsTo(DeliveryOrder::class);
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
     public function material()

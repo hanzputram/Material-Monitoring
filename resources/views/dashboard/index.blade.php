@@ -8,53 +8,58 @@
 <div class="space-y-6">
 
     <!-- 1. PROJECT HERO IDENTITAS -->
-    <div class="card-clean p-6 bg-gradient-to-r from-white via-white to-blue-50/40 relative overflow-hidden">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+    <div class="card-clean p-5 sm:p-6 bg-gradient-to-r from-white via-white to-blue-50/40 relative overflow-hidden">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
             <div>
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                     <span class="badge-clean bg-blue-100 text-blue-800">{{ $currentProject->status === 'active' ? 'Proyek Aktif' : ucfirst($currentProject->status) }}</span>
                     <span class="badge-clean bg-slate-100 text-slate-700">Tahun {{ $currentProject->budget_year }}</span>
                     @if($currentProject->prototype_type)
-                        <span class="badge-clean bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-mono">{{ $currentProject->prototype_type }}</span>
+                        <span class="badge-clean bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-semibold">{{ $currentProject->prototype_type }}</span>
                     @endif
                     <span class="text-xs text-slate-400 font-medium">Batas Alert: +{{ $currentProject->alert_over_threshold_pct }}% / -{{ $currentProject->alert_under_threshold_pct }}%</span>
                 </div>
                 <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">{{ $currentProject->name }}</h1>
                 <div class="mt-2 flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-slate-500 font-medium">
-                    <span class="flex items-center gap-1">
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                        {{ $currentProject->floor_count }} Lantai
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        <span>{{ $currentProject->floor_count }} Lantai</span>
                     </span>
-                    <span class="flex items-center gap-1">
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        {{ $currentProject->location_kds ?: 'Lokasi Belum Diatur' }}
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>{{ $currentProject->location_kds ?: 'Lokasi Belum Diatur' }}</span>
                     </span>
-                    <span class="flex items-center gap-1">
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        Pondasi: {{ $currentProject->foundation_type ?: 'Bored Pile' }}
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>Pondasi: {{ $currentProject->foundation_type ?: 'Bored Pile' }}</span>
                     </span>
                 </div>
             </div>
 
             <!-- Quick Action Toolbar -->
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
                 <a href="{{ route('rab.builder') }}" 
-                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all">
+                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl shadow-sm shadow-blue-500/20 transition-all whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Kelola RAB
                 </a>
                 <a href="{{ route('equipment.index') }}" 
-                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-sm transition-all">
+                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-xs transition-all whitespace-nowrap">
                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Fast Input Alat
+                    Alat & Mesin
+                </a>
+                <a href="{{ route('workers.index') }}" 
+                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-xs transition-all whitespace-nowrap">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    Pekerja / Tukang
                 </a>
                 <a href="{{ route('procurement.index') }}" 
-                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-sm transition-all">
+                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl shadow-xs transition-all whitespace-nowrap">
                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     Pengadaan (DO/Inv)
                 </a>
                 <a href="{{ route('rab.export', $currentProject->id) }}" 
-                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl transition-all">
+                   class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl transition-all whitespace-nowrap">
                     <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                     Ekspor Excel
                 </a>
@@ -63,103 +68,137 @@
     </div>
 
     <!-- 2. KPI METRICS CARDS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
         <!-- Card 1: Total RAB -->
-        <div class="card-clean p-5 card-clean-hover">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Anggaran RAB</span>
-                <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        <div class="card-clean p-4 sm:p-5 card-clean-hover flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Anggaran RAB</span>
+                    <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-1 text-slate-900 tracking-tight whitespace-nowrap min-w-0">
+                    <span class="text-xs font-bold text-slate-400 shrink-0">Rp</span>
+                    <span class="text-lg sm:text-xl lg:text-xl xl:text-lg 2xl:text-2xl font-black font-mono truncate" title="Rp {{ number_format($stats['total_rab'], 0, ',', '.') }}">
+                        {{ number_format($stats['total_rab'], 0, ',', '.') }}
+                    </span>
                 </div>
             </div>
-            <div class="text-2xl font-black text-slate-900 tracking-tight">
-                Rp {{ number_format($stats['total_rab'], 0, ',', '.') }}
-            </div>
-            <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
-                <span>{{ $currentProject->rootRabNodes->count() }} Kategori Utama</span>
-                <a href="{{ route('rab.builder') }}" class="text-blue-600 font-semibold hover:underline">Lihat Rincian &rarr;</a>
+            <div class="mt-3 pt-2.5 border-t border-slate-100/80 flex items-center justify-between text-xs text-slate-500 min-w-0">
+                <span class="truncate text-[11px]">{{ $currentProject->rootRabNodes->count() }} Kategori Utama</span>
+                <a href="{{ route('rab.builder') }}" class="text-[11px] text-blue-600 font-semibold hover:underline shrink-0 ml-1">Lihat Rincian &rarr;</a>
             </div>
         </div>
 
         <!-- Card 2: Realisasi Biaya -->
-        <div class="card-clean p-5 card-clean-hover">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Realisasi Biaya (Invoice)</span>
-                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="card-clean p-4 sm:p-5 card-clean-hover flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Realisasi Biaya (Invoice)</span>
+                    <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-1 text-slate-900 tracking-tight whitespace-nowrap min-w-0">
+                    <span class="text-xs font-bold text-slate-400 shrink-0">Rp</span>
+                    <span class="text-lg sm:text-xl lg:text-xl xl:text-lg 2xl:text-2xl font-black font-mono truncate" title="Rp {{ number_format($stats['total_realization'], 0, ',', '.') }}">
+                        {{ number_format($stats['total_realization'], 0, ',', '.') }}
+                    </span>
                 </div>
             </div>
-            <div class="text-2xl font-black text-slate-900 tracking-tight">
-                Rp {{ number_format($stats['total_realization'], 0, ',', '.') }}
-            </div>
-            <div class="mt-2 flex items-center justify-between text-xs">
+            <div class="mt-3 pt-2.5 border-t border-slate-100/80 flex items-center justify-between text-xs min-w-0">
                 @if($stats['cost_variance'] > 0)
-                    <span class="text-rose-600 font-bold">+Rp {{ number_format($stats['cost_variance'], 0, ',', '.') }} (Over)</span>
+                    <span class="text-rose-600 font-bold text-[11px] truncate whitespace-nowrap" title="+Rp {{ number_format($stats['cost_variance'], 0, ',', '.') }} (Over)">
+                        +Rp {{ number_format($stats['cost_variance'], 0, ',', '.') }} (Over)
+                    </span>
                 @else
-                    <span class="text-emerald-600 font-bold">Rp {{ number_format(abs($stats['cost_variance']), 0, ',', '.') }} Sisa</span>
+                    <span class="text-emerald-600 font-bold text-[11px] truncate whitespace-nowrap" title="Sisa Rp {{ number_format(abs($stats['cost_variance']), 0, ',', '.') }}">
+                        Sisa Rp {{ number_format(abs($stats['cost_variance']), 0, ',', '.') }}
+                    </span>
                 @endif
-                <span class="text-slate-400">Tervalidasi</span>
+                <span class="text-slate-400 text-[10px] shrink-0 font-medium ml-1">Tervalidasi</span>
             </div>
         </div>
 
         <!-- Card 3: Material Variance Status -->
-        <div class="card-clean p-5 card-clean-hover">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Status Material Proyek</span>
-                <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        <div class="card-clean p-4 sm:p-5 card-clean-hover flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Status Material Proyek</span>
+                    <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-1.5 whitespace-nowrap min-w-0">
+                    <span class="text-lg sm:text-xl lg:text-xl xl:text-lg 2xl:text-2xl font-black text-slate-900 font-mono">{{ $stats['materials_count'] }}</span>
+                    <span class="text-xs text-slate-500 font-medium truncate">Material Terdaftar</span>
                 </div>
             </div>
-            <div class="flex items-baseline gap-2">
-                <span class="text-2xl font-black text-slate-900">{{ $stats['materials_count'] }}</span>
-                <span class="text-xs text-slate-500 font-medium">Material Terdaftar</span>
-            </div>
-            <div class="mt-3 flex items-center gap-2">
-                <span class="badge-clean bg-emerald-100 text-emerald-800 text-[11px]">{{ $stats['normal_count'] }} Normal</span>
+            <div class="mt-3 pt-2.5 border-t border-slate-100/80 flex flex-wrap items-center gap-1">
+                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
+                    {{ $stats['normal_count'] }} Normal
+                </span>
                 @if($stats['over_count'] > 0)
-                    <span class="badge-clean bg-rose-100 text-rose-800 text-[11px]">{{ $stats['over_count'] }} Lebih</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 whitespace-nowrap">
+                        {{ $stats['over_count'] }} Lebih
+                    </span>
                 @endif
                 @if($stats['under_count'] > 0)
-                    <span class="badge-clean bg-amber-100 text-amber-800 text-[11px]">{{ $stats['under_count'] }} Kurang</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
+                        {{ $stats['under_count'] }} Kurang
+                    </span>
                 @endif
             </div>
         </div>
 
         <!-- Card 4: Validasi & Alert -->
-        <div class="card-clean p-5 card-clean-hover">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Validasi & Alert</span>
-                <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        <div class="card-clean p-4 sm:p-5 card-clean-hover flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Validasi & Alert</span>
+                    <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-1.5 whitespace-nowrap min-w-0">
+                    <span class="text-lg sm:text-xl lg:text-xl xl:text-lg 2xl:text-2xl font-black text-slate-900 font-mono">{{ $stats['validations_pending'] }}</span>
+                    <span class="text-xs text-slate-500 font-medium truncate">Antrean Validasi</span>
                 </div>
             </div>
-            <div class="text-2xl font-black text-slate-900 tracking-tight">
-                {{ $stats['validations_pending'] }} <span class="text-xs font-semibold text-slate-500">Antrean Validasi</span>
-            </div>
-            <div class="mt-2 flex items-center justify-between text-xs">
-                <a href="{{ route('variance.index') }}" class="text-blue-600 font-bold hover:underline">Dual Approval &rarr;</a>
-                <span class="badge-clean {{ $stats['alerts_unread'] > 0 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600' }}">
+            <div class="mt-3 pt-2.5 border-t border-slate-100/80 flex items-center justify-between text-xs min-w-0">
+                <a href="{{ route('variance.index') }}" class="text-[11px] text-blue-600 font-bold hover:underline shrink-0 flex items-center gap-0.5">
+                    Dual Approval &rarr;
+                </a>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 {{ $stats['alerts_unread'] > 0 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600' }}">
                     {{ $stats['alerts_unread'] }} Alert
                 </span>
             </div>
         </div>
 
         <!-- Card 5: Pembelian di Luar RAB (Non-RAB) -->
-        <div class="card-clean p-5 card-clean-hover border-purple-200/80 bg-gradient-to-br from-white via-white to-purple-50/30">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold uppercase tracking-wider text-purple-700">Item di Luar RAB</span>
-                <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <div class="card-clean p-4 sm:p-5 card-clean-hover border-purple-200/80 bg-gradient-to-br from-white via-white to-purple-50/30 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-purple-700">Item di Luar RAB</span>
+                    <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-1 text-slate-900 tracking-tight whitespace-nowrap min-w-0">
+                    <span class="text-xs font-bold text-purple-500 shrink-0">Rp</span>
+                    <span class="text-lg sm:text-xl lg:text-xl xl:text-lg 2xl:text-2xl font-black font-mono text-purple-950 truncate" title="Rp {{ number_format($stats['non_rab_total_cost'] ?? 0, 0, ',', '.') }}">
+                        {{ number_format($stats['non_rab_total_cost'] ?? 0, 0, ',', '.') }}
+                    </span>
                 </div>
             </div>
-            <div class="text-2xl font-black text-slate-900 tracking-tight">
-                Rp {{ number_format($stats['non_rab_total_cost'] ?? 0, 0, ',', '.') }}
-            </div>
-            <div class="mt-2 flex items-center justify-between text-xs">
-                <span class="font-bold {{ ($stats['non_rab_items_count'] ?? 0) > 0 ? 'text-purple-700' : 'text-slate-500' }}">
-                    {{ $stats['non_rab_items_count'] ?? 0 }} Material Non-RAB
+            <div class="mt-3 pt-2.5 border-t border-purple-100/80 flex items-center justify-between text-xs min-w-0">
+                <span class="font-bold text-[11px] whitespace-nowrap truncate {{ ($stats['non_rab_items_count'] ?? 0) > 0 ? 'text-purple-700' : 'text-slate-500' }}">
+                    {{ $stats['non_rab_items_count'] ?? 0 }} Non-RAB
                 </span>
-                <a href="#non-rab-monitoring" class="text-purple-600 font-bold hover:underline">Lihat Rekapan &darr;</a>
+                <a href="#non-rab-monitoring" class="text-[11px] text-purple-600 font-bold hover:underline shrink-0 ml-1 flex items-center gap-0.5">
+                    Rekapan &darr;
+                </a>
             </div>
         </div>
     </div>
@@ -473,13 +512,13 @@
                     <span>Seluruh pengadaan material pada proyek ini berjalan tepat 100% di dalam koridor Bill of Material (BOM) rencana anggaran proyek.</span>
                 </template>
                 <template x-if="items.length > 0">
-                    <span>Pencarian tidak menemukan material atau surat jalan yang sesuai filter.</span>
+                    <span>Pencarian tidak menemukan material atau penerimaan pembelian yang sesuai filter.</span>
                 </template>
             </p>
             <template x-if="items.length === 0 && {{ auth()->user()?->canWritePo() ? 'true' : 'false' }}">
                 <a href="{{ route('procurement.po.index') }}" class="inline-flex items-center gap-1.5 mt-4 px-4 py-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>+ Buat Purchase Order (PO)</span>
+                    <span>+ Buat Pesanan Pembelian (PO)</span>
                 </a>
             </template>
         </div>
@@ -664,302 +703,215 @@
             </div>
         </div>
 
-        <!-- 1. VIEW MODE A: EXECUTIVE VISUAL CARDS (HIERARKIS RAB TREE — 4 KOLOM) -->
-        <div x-show="viewMode === 'cards'" class="p-6 space-y-8">
+        <!-- 1. VIEW MODE A: EXECUTIVE VISUAL CARDS (UNIFIED MONITORING GRID — SEMUA MATERIAL) -->
+        <div x-show="viewMode === 'cards'" class="p-6">
             @php
                 $allCardsMats = [];
-                foreach ($treeRealizations as $cg) {
-                    foreach ($cg['sections'] as $s) {
-                        foreach ($s['materials'] as $m) {
-                            $allCardsMats[] = [
-                                'name' => $m->material->name,
-                                'code' => $m->material->code,
-                                'baseCategory' => $m->material->category,
-                                'rabCategory' => $cg['category']->name,
-                                'rabCode' => $cg['category']->code,
-                                'rabFull' => $cg['category']->code . '. ' . $cg['category']->name,
-                                'sectionTitle' => $s['title'],
-                                'sectionSubtitle' => $s['subtitle'] ?? '',
-                                'evalType' => $m->eval_type,
-                            ];
-                        }
-                    }
+                foreach ($realizations as $rel) {
+                    $allCardsMats[] = [
+                        'name' => $rel->material->name,
+                        'code' => $rel->material->code,
+                        'baseCategory' => $rel->material->category,
+                        'rabCategory' => $rel->rab_category_name ?? '',
+                        'rabCode' => $rel->rab_category_code ?? '',
+                        'rabFull' => $rel->rab_category_full ?? '',
+                        'sectionTitle' => $rel->rab_section_title ?? '',
+                        'sectionSubtitle' => $rel->rab_section_subtitle ?? '',
+                        'evalType' => $rel->eval_type,
+                    ];
                 }
             @endphp
 
-            @forelse($treeRealizations as $catGroup)
-                @php
-                    $catAllMats = [];
-                    foreach ($catGroup['sections'] as $sec) {
-                        foreach ($sec['materials'] as $m) {
-                            $catAllMats[] = [
-                                'name' => $m->material->name,
-                                'code' => $m->material->code,
-                                'baseCategory' => $m->material->category,
-                                'rabCategory' => $catGroup['category']->name,
-                                'rabCode' => $catGroup['category']->code,
-                                'rabFull' => $catGroup['category']->code . '. ' . $catGroup['category']->name,
-                                'sectionTitle' => $sec['title'],
-                                'sectionSubtitle' => $sec['subtitle'] ?? '',
-                                'evalType' => $m->eval_type,
-                            ];
-                        }
-                    }
-                @endphp
-
-                <div x-show="hasMatchingItems({{ json_encode($catAllMats) }})" class="space-y-6">
-                    <!-- KATEGORI BANNER (SESUAI WIREFRAME USER) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                @forelse($realizations as $rel)
                     @php
-                        $isUnmappedGroup = $catGroup['is_unmapped'] ?? false;
+                        $actual = (float) $rel->actual_qty;
+                        $planned = (float) $rel->planned_qty;
+                        $pct = $planned > 0 ? round(($actual / $planned) * 100, 1) : 0;
+                        $unit = $rel->material->defaultUnit?->code ?? '-';
+                        $evalType = $rel->eval_type;
+
+                        if ($evalType === 'over') {
+                            $cardBorder = 'border-rose-300 ring-1 ring-rose-200 bg-gradient-to-b from-rose-50/40 via-white to-white';
+                            $badgeCls = 'bg-rose-100 text-rose-800 border-rose-200';
+                            $badgeLabel = 'Melebihi RAB (+' . number_format($rel->variance_pct, 1, ',', '.') . '%)';
+                            $descNote = 'Kuantitas fisik diterima melampaui RAB sebesar +' . format_qty($rel->variance_qty) . ' ' . $unit . '.';
+                        } elseif ($evalType === 'pending') {
+                            $cardBorder = 'border-slate-200 bg-white hover:border-slate-300';
+                            $badgeCls = 'bg-slate-100 text-slate-600 border-slate-200';
+                            $badgeLabel = 'Belum Ada Pengiriman (0%)';
+                            $descNote = 'Belum ada Surat Jalan (DO) fisik diterima di lapangan.';
+                        } elseif ($evalType === 'partial') {
+                            $cardBorder = 'border-blue-200 bg-white hover:border-blue-300';
+                            $badgeCls = 'bg-blue-100 text-blue-800 border-blue-200';
+                            $badgeLabel = 'Sebagian Masuk (' . $pct . '%)';
+                            $descNote = 'Tersisa ' . format_qty(abs($rel->variance_qty)) . ' ' . $unit . ' lagi untuk melengkapi kuota RAB.';
+                        } else {
+                            $cardBorder = 'border-emerald-200 bg-white hover:border-emerald-300';
+                            $badgeCls = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                            $badgeLabel = 'Sesuai RAB (100%)';
+                            $descNote = 'Seluruh kuota material telah terpenuhi 100% tepat sesuai RAB.';
+                        }
+
+                        $matDescriptor = [
+                            'name' => $rel->material->name,
+                            'code' => $rel->material->code,
+                            'baseCategory' => $rel->material->category,
+                            'rabCategory' => $rel->rab_category_name ?? '',
+                            'rabCode' => $rel->rab_category_code ?? '',
+                            'rabFull' => $rel->rab_category_full ?? '',
+                            'sectionTitle' => $rel->rab_section_title ?? '',
+                            'sectionSubtitle' => $rel->rab_section_subtitle ?? '',
+                            'evalType' => $evalType,
+                        ];
                     @endphp
-                    <div class="rounded-2xl {{ $isUnmappedGroup ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-amber-500/40' : 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-slate-700/60' }} text-white p-4 sm:p-5 shadow-md border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl {{ $isUnmappedGroup ? 'bg-amber-500/20 text-amber-400 border-amber-400/30' : 'bg-blue-500/20 text-blue-400 border-blue-400/30' }} border flex items-center justify-center font-black text-sm flex-shrink-0">
-                                {{ $catGroup['category']->code }}
-                            </div>
+
+                    <!-- INTERACTIVE CLICKABLE CARD (REDIRECT TO DETAIL & HISTORY) -->
+                    <div x-show="matchesItem({{ json_encode($matDescriptor) }})"
+                         class="h-full">
+                        <a href="{{ route('monitoring.material.show', $rel->id) }}" 
+                            class="group h-full rounded-2xl border p-4 transition-all duration-200 hover:shadow-xl hover:scale-[1.015] hover:border-blue-500 cursor-pointer flex flex-col justify-between {{ $cardBorder }}"
+                           title="Klik untuk melihat riwayat PO, DO, faktur invoice, dan alokasi RAB material ini">
+                            
                             <div>
-                                <span class="text-[10px] font-extrabold {{ $isUnmappedGroup ? 'text-amber-400' : 'text-blue-400' }} uppercase tracking-widest block">
-                                    {{ $isUnmappedGroup ? 'MATERIAL DI LUAR ANGGARAN RAB (NON-RAB)' : 'KATEGORI UTAMA RAB' }}
-                                </span>
-                                <h3 class="text-base sm:text-lg font-black text-white tracking-tight leading-tight">
-                                    {{ $catGroup['category']->code }}. {{ $catGroup['category']->name }}
-                                </h3>
-                            </div>
-                        </div>
+                                <!-- Top Bar: Code & Health Badge -->
+                                <div class="flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-100 text-slate-700 rounded border border-slate-200 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors shrink-0">
+                                            {{ $rel->material->code }}
+                                        </span>
+                                        @if(!empty($rel->material->category))
+                                            <span class="text-[10px] font-bold text-slate-400 uppercase truncate">
+                                                {{ str_replace('_', ' ', $rel->material->category) }}
+                                            </span>
+                                        @endif
+                                    </div>
 
-                        <div class="flex items-center gap-2 self-start sm:self-auto">
-                            <span class="px-3 py-1 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">
-                                <span x-text="countMatchingItems({{ json_encode($catAllMats) }})"></span> Material
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- SUB-KATEGORI SECTIONS -->
-                    @foreach($catGroup['sections'] as $section)
-                        @php
-                            $secMats = [];
-                            foreach ($section['materials'] as $m) {
-                                $secMats[] = [
-                                    'name' => $m->material->name,
-                                    'code' => $m->material->code,
-                                    'baseCategory' => $m->material->category,
-                                    'rabCategory' => $catGroup['category']->name,
-                                    'rabCode' => $catGroup['category']->code,
-                                    'rabFull' => $catGroup['category']->code . '. ' . $catGroup['category']->name,
-                                    'sectionTitle' => $section['title'],
-                                    'sectionSubtitle' => $section['subtitle'] ?? '',
-                                    'evalType' => $m->eval_type,
-                                ];
-                            }
-                        @endphp
-
-                        <div x-show="hasMatchingItems({{ json_encode($secMats) }})" class="space-y-3.5 pl-1 sm:pl-2">
-                            <!-- Sub Kategori Heading Bar -->
-                            <div class="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <div class="w-2 h-2 rounded-full bg-blue-600"></div>
-                                    <h4 class="text-sm font-extrabold text-slate-800 tracking-tight">
-                                        {{ $section['title'] }}
-                                    </h4>
-                                    @if(!empty($section['subtitle']))
-                                        <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200/60">
-                                            ↳ {{ $section['subtitle'] }}
+                                    @if($evalType === 'over')
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap shrink-0">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
+                                            <span>Over RAB</span>
+                                        </span>
+                                    @elseif($evalType === 'pending')
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs whitespace-nowrap shrink-0">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
+                                            <span>Belum DO</span>
+                                        </span>
+                                    @elseif($evalType === 'partial')
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs whitespace-nowrap shrink-0">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                                            <span>{{ $pct }}%</span>
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap shrink-0">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                            <span>100% Sesuai</span>
                                         </span>
                                     @endif
                                 </div>
-                                <span class="text-[11px] font-semibold text-slate-400">
-                                    <span x-text="countMatchingItems({{ json_encode($secMats) }})"></span> Item Material
-                                </span>
-                            </div>
 
-                            <!-- 4-COLUMN RESPONSIVE MATERIAL CARDS GRID -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                @foreach($section['materials'] as $rel)
-                                    @php
-                                        $actual = (float) $rel->actual_qty;
-                                        $planned = (float) $rel->planned_qty;
-                                        $pct = $planned > 0 ? round(($actual / $planned) * 100, 1) : 0;
-                                        $unit = $rel->material->defaultUnit?->code ?? '-';
-                                        $evalType = $rel->eval_type;
+                                <!-- HERO MATERIAL TITLE: SANGAT BESAR & BOLD -->
+                                <div class="pt-2.5 pb-1">
+                                    <h3 class="text-base sm:text-[17px] font-black text-slate-950 tracking-tight leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+                                        {{ $rel->material->name }}
+                                    </h3>
+                                </div>
 
-                                        if ($evalType === 'over') {
-                                            $cardBorder = 'border-rose-300 ring-1 ring-rose-200 bg-gradient-to-b from-rose-50/40 via-white to-white';
-                                            $badgeCls = 'bg-rose-100 text-rose-800 border-rose-200';
-                                            $badgeLabel = 'Melebihi RAB (+' . number_format($rel->variance_pct, 1, ',', '.') . '%)';
-                                            $descNote = 'Kuantitas fisik diterima melampaui RAB sebesar +' . format_qty($rel->variance_qty) . ' ' . $unit . '.';
-                                        } elseif ($evalType === 'pending') {
-                                            $cardBorder = 'border-slate-200 bg-white hover:border-slate-300';
-                                            $badgeCls = 'bg-slate-100 text-slate-600 border-slate-200';
-                                            $badgeLabel = 'Belum Ada Pengiriman (0%)';
-                                            $descNote = 'Belum ada Surat Jalan (DO) fisik diterima di lapangan.';
-                                        } elseif ($evalType === 'partial') {
-                                            $cardBorder = 'border-blue-200 bg-white hover:border-blue-300';
-                                            $badgeCls = 'bg-blue-100 text-blue-800 border-blue-200';
-                                            $badgeLabel = 'Sebagian Masuk (' . $pct . '%)';
-                                            $descNote = 'Tersisa ' . format_qty(abs($rel->variance_qty)) . ' ' . $unit . ' lagi untuk melengkapi kuota RAB.';
-                                        } else {
-                                            $cardBorder = 'border-emerald-200 bg-white hover:border-emerald-300';
-                                            $badgeCls = 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                                            $badgeLabel = 'Sesuai RAB (100%)';
-                                            $descNote = 'Seluruh kuota material telah terpenuhi 100% tepat sesuai RAB.';
-                                        }
-
-                                        $matDescriptor = [
-                                            'name' => $rel->material->name,
-                                            'code' => $rel->material->code,
-                                            'baseCategory' => $rel->material->category,
-                                            'rabCategory' => $catGroup['category']->name,
-                                            'rabCode' => $catGroup['category']->code,
-                                            'rabFull' => $catGroup['category']->code . '. ' . $catGroup['category']->name,
-                                            'sectionTitle' => $section['title'],
-                                            'sectionSubtitle' => $section['subtitle'] ?? '',
-                                            'evalType' => $evalType,
-                                        ];
-                                    @endphp
-
-                                    <!-- INTERACTIVE CLICKABLE CARD (REDIRECT TO DETAIL & HISTORY) -->
-                                    <div x-show="matchesItem({{ json_encode($matDescriptor) }})"
-                                         class="h-full">
-                                        <a href="{{ route('monitoring.material.show', $rel->id) }}" 
-                                            class="group h-full rounded-2xl border p-4 transition-all duration-200 hover:shadow-xl hover:scale-[1.015] hover:border-blue-500 cursor-pointer flex flex-col justify-between {{ $cardBorder }}"
-                                           title="Klik untuk melihat riwayat DO, faktur invoice, dan alokasi RAB material ini">
-                                            
-                                            <div>
-                                                <!-- Top Bar: Code & Health Badge -->
-                                                <div class="flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
-                                                    <span class="px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-100 text-slate-700 rounded border border-slate-200 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors">
-                                                        {{ $rel->material->code }}
-                                                    </span>
-
-                                                    @if($evalType === 'over')
-                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap shrink-0">
-                                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
-                                                            <span>Over RAB</span>
-                                                        </span>
-                                                    @elseif($evalType === 'pending')
-                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs whitespace-nowrap shrink-0">
-                                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
-                                                            <span>Belum DO</span>
-                                                        </span>
-                                                    @elseif($evalType === 'partial')
-                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs whitespace-nowrap shrink-0">
-                                                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
-                                                            <span>{{ $pct }}%</span>
-                                                        </span>
-                                                    @else
-                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap shrink-0">
-                                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                                                            <span>100% Sesuai</span>
-                                                        </span>
-                                                    @endif
-                                                </div>
-
-                                                <!-- HERO MATERIAL TITLE: SANGAT BESAR & BOLD -->
-                                                <div class="pt-2.5 pb-1">
-                                                    <h3 class="text-base sm:text-[17px] font-black text-slate-950 tracking-tight leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
-                                                        {{ $rel->material->name }}
-                                                    </h3>
-                                                </div>
-
-                                                <!-- Progress Bar Visual Gauge -->
-                                                <div class="mt-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-1.5">
-                                                    <div class="flex items-center justify-between text-[11px]">
-                                                        <span class="font-bold text-slate-600">Realisasi Fisik</span>
-                                                        <div class="flex items-center gap-1">
-                                                            <span class="font-black font-mono {{ $evalType === 'over' ? 'text-rose-600' : ($evalType === 'normal' ? 'text-emerald-700' : ($evalType === 'partial' ? 'text-blue-700' : 'text-slate-500')) }}">
-                                                                {{ $pct }}%
-                                                            </span>
-                                                            @if($evalType === 'over')
-                                                                <span class="text-[9px] font-extrabold text-rose-700 bg-rose-100 px-1 py-0.2 rounded border border-rose-200">OVER</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Dual-Color Progress Track -->
-                                                    <div class="w-full bg-slate-200/80 rounded-full h-2.5 p-0.5 overflow-hidden flex relative shadow-inner">
-                                                        @if($evalType === 'over')
-                                                            <div class="bg-blue-600 h-full rounded-l-full" style="width: 85%;"></div>
-                                                            <div class="h-full rounded-r-full animate-pulse bg-rose-500" 
-                                                                 style="width: 15%; background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.4) 3px, rgba(255,255,255,0.4) 6px);"></div>
-                                                        @elseif($pct > 0)
-                                                            <div class="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-500" 
-                                                                 style="width: {{ min($pct, 100) }}%;"></div>
-                                                        @else
-                                                            <div class="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-400">
-                                                                0% Belum Dikirim
-                                                            </div>
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
-                                                        <span>Kirim: <strong class="text-slate-800 font-mono">{{ number_format($actual, 1, ',', '.') }}</strong></span>
-                                                        <span>Target: <strong class="text-slate-700 font-mono">{{ number_format($planned, 1, ',', '.') }} {{ $unit }}</strong></span>
-                                                    </div>
-                                                </div>
-
-                                                <!-- 3-Pill Metrics Grid -->
-                                                <div class="grid grid-cols-3 gap-1.5 mt-2.5 text-center">
-                                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
-                                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">RAB</span>
-                                                        <span class="text-xs font-mono font-bold text-slate-800">{{ format_qty($planned) }}</span>
-                                                        <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
-                                                    </div>
-                                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
-                                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">DO</span>
-                                                        <span class="text-xs font-mono font-extrabold {{ $actual > 0 ? 'text-blue-700' : 'text-slate-400' }}">{{ format_qty($actual) }}</span>
-                                                        <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
-                                                    </div>
-                                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
-                                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">Selisih</span>
-                                                        <span class="text-xs font-mono font-extrabold {{ $rel->variance_qty > 0 ? 'text-rose-600' : ($rel->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">
-                                                            {{ $rel->variance_qty > 0 ? '+' : '' }}{{ format_qty($rel->variance_qty) }}
-                                                        </span>
-                                                        <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Contextual Insight Box -->
-                                                <div class="mt-2.5 p-2 rounded-lg text-[10px] leading-relaxed {{ $evalType === 'over' ? 'bg-rose-50/80 text-rose-900 border border-rose-100 font-medium' : 'bg-slate-50 text-slate-600' }}">
-                                                    <span class="font-bold">{{ $evalType === 'over' ? '⚠️ Rekomendasi:' : 'ℹ️ Status:' }}</span> {{ $descNote }}
-                                                </div>
-                                            </div>
-
-                                            <!-- Card Click-Through Footer -->
-                                            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                                                <span class="text-[11px] font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1 transition-all">
-                                                    Lihat Detail & Riwayat
-                                                    <svg class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                                </span>
-
-                                                @if($evalType === 'over')
-                                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white shadow-2xs">
-                                                        Validasi
-                                                    </span>
-                                                @else
-                                                    <span class="text-[10px] text-slate-400 font-medium">
-                                                        #{{ $rel->id }}
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </a>
+                                <!-- Progress Bar Visual Gauge -->
+                                <div class="mt-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-1.5">
+                                    <div class="flex items-center justify-between text-[11px]">
+                                        <span class="font-bold text-slate-600">Realisasi Fisik</span>
+                                        <div class="flex items-center gap-1">
+                                            <span class="font-black font-mono {{ $evalType === 'over' ? 'text-rose-600' : ($evalType === 'normal' ? 'text-emerald-700' : ($evalType === 'partial' ? 'text-blue-700' : 'text-slate-500')) }}">
+                                                {{ $pct }}%
+                                            </span>
+                                            @if($evalType === 'over')
+                                                <span class="text-[9px] font-extrabold text-rose-700 bg-rose-100 px-1 py-0.2 rounded border border-rose-200">OVER</span>
+                                            @endif
+                                        </div>
                                     </div>
-                                @endforeach
+
+                                    <!-- Dual-Color Progress Track -->
+                                    <div class="w-full bg-slate-200/80 rounded-full h-2.5 p-0.5 overflow-hidden flex relative shadow-inner">
+                                        @if($evalType === 'over')
+                                            <div class="bg-blue-600 h-full rounded-l-full" style="width: 85%;"></div>
+                                            <div class="h-full rounded-r-full animate-pulse bg-rose-500" 
+                                                 style="width: 15%; background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.4) 3px, rgba(255,255,255,0.4) 6px);"></div>
+                                        @elseif($pct > 0)
+                                            <div class="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-500" 
+                                                 style="width: {{ min($pct, 100) }}%;"></div>
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-400">
+                                                0% Belum Dikirim
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                                        <span>Kirim: <strong class="text-slate-800 font-mono">{{ number_format($actual, 1, ',', '.') }}</strong></span>
+                                        <span>Target: <strong class="text-slate-700 font-mono">{{ number_format($planned, 1, ',', '.') }} {{ $unit }}</strong></span>
+                                    </div>
+                                </div>
+
+                                <!-- 3-Pill Metrics Grid -->
+                                <div class="grid grid-cols-3 gap-1.5 mt-2.5 text-center">
+                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">RAB</span>
+                                        <span class="text-xs font-mono font-bold text-slate-800">{{ format_qty($planned) }}</span>
+                                        <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
+                                    </div>
+                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">DO</span>
+                                        <span class="text-xs font-mono font-extrabold {{ $actual > 0 ? 'text-blue-700' : 'text-slate-400' }}">{{ format_qty($actual) }}</span>
+                                        <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
+                                    </div>
+                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">Selisih</span>
+                                        <span class="text-xs font-mono font-extrabold {{ $rel->variance_qty > 0 ? 'text-rose-600' : ($rel->variance_qty < 0 ? 'text-amber-600' : 'text-emerald-600') }}">
+                                            {{ $rel->variance_qty > 0 ? '+' : '' }}{{ format_qty($rel->variance_qty) }}
+                                        </span>
+                                        <span class="text-[9px] text-slate-400 block">{{ $unit }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Contextual Insight Box -->
+                                <div class="mt-2.5 p-2 rounded-lg text-[10px] leading-relaxed {{ $evalType === 'over' ? 'bg-rose-50/80 text-rose-900 border border-rose-100 font-medium' : 'bg-slate-50 text-slate-600' }}">
+                                    <span class="font-bold">{{ $evalType === 'over' ? '⚠️ Rekomendasi:' : 'ℹ️ Status:' }}</span> {{ $descNote }}
+                                </div>
                             </div>
-                        </div>
-                    @endforeach
-                </div>
-            @empty
-                <div class="py-12 text-center text-slate-400">
-                    Belum ada data realisasi material di proyek ini.
-                </div>
-            @endforelse
+
+                            <!-- Card Click-Through Footer -->
+                            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                                <span class="text-[11px] font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1 transition-all">
+                                    Lihat Detail & Riwayat
+                                    <svg class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                </span>
+
+                                @if($evalType === 'over')
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white shadow-2xs">
+                                        Validasi
+                                    </span>
+                                @else
+                                    <span class="text-[10px] text-slate-400 font-medium">
+                                        #{{ $rel->id }}
+                                    </span>
+                                @endif
+                            </div>
+                        </a>
+                    </div>
+                @empty
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        Belum ada data realisasi material di proyek ini.
+                    </div>
+                @endforelse
+            </div>
 
             <!-- Empty state when search or filter yields 0 matches in Cards View -->
             <div x-show="hasMatchingItems({{ json_encode($allCardsMats) }}) === false" class="py-16 text-center" x-cloak>
                 <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mb-3">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
-                <p class="text-sm font-bold text-slate-800">Tidak ada kategori atau material yang cocok</p>
+                <p class="text-sm font-bold text-slate-800">Tidak ada material yang cocok</p>
                 <p class="text-xs text-slate-500 mt-1">
                     Pencarian "<span x-text="search" class="font-semibold text-slate-700"></span>" tidak menemukan material yang sesuai.
                 </p>
