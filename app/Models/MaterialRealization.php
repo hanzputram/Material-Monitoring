@@ -96,6 +96,34 @@ class MaterialRealization extends Model
         }
 
         // 4. Status determination based on project thresholds
+        $isParentWithBreakdown = RabItemMaterial::where('material_id', $materialId)
+            ->whereHas('breakdowns')
+            ->whereHas('rabItem.rabNode', function ($query) use ($projectId) {
+                $query->where('project_id', $projectId);
+            })->exists();
+
+        if ($isParentWithBreakdown && $plannedQty == 0 && $actualQty == 0) {
+            $existing = self::where('project_id', $projectId)->where('material_id', $materialId)->first();
+            if ($existing) {
+                Alert::where('project_id', $projectId)
+                    ->where('reference_type', self::class)
+                    ->where('reference_id', $existing->id)
+                    ->delete();
+                $existing->varianceValidations()->delete();
+                $existing->delete();
+            }
+
+            return new self([
+                'project_id' => $projectId,
+                'material_id' => $materialId,
+                'planned_qty' => 0,
+                'actual_qty' => 0,
+                'variance_qty' => 0,
+                'variance_pct' => 0,
+                'status' => 'normal',
+            ]);
+        }
+
         $overThreshold = (float) ($project->alert_over_threshold_pct ?? 10.00);
         $underThreshold = (float) ($project->alert_under_threshold_pct ?? 5.00);
 

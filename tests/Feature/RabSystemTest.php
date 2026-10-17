@@ -482,4 +482,229 @@ class RabSystemTest extends TestCase
         $detailResponse->assertStatus(200);
         $detailResponse->assertSee('Pembelian Tunai (Non-PO)');
     }
+
+    public function test_project_switching_updates_session_and_handles_previous_url_query_params()
+    {
+        $project1 = Project::firstOrFail();
+        $project2 = Project::create([
+            'name' => 'Proyek Kedua Untuk Switch Test',
+            'prototype_type' => 'Standar',
+            'floor_count' => 2,
+            'budget_year' => '2026',
+            'status' => 'active',
+        ]);
+
+        // Scenario 1: User switches from a URL containing ?project_id=2
+        $response = $this->from(route('rab.builder', ['project_id' => $project2->id]))
+            ->post(route('projects.switch'), ['project_id' => $project1->id]);
+
+        $this->assertEquals($project1->id, session('active_project_id'));
+        $response->assertRedirect(route('rab.builder', ['project_id' => $project1->id]));
+
+        // Scenario 2: User switches from a clean URL without query parameters
+        $response2 = $this->from(route('dashboard'))
+            ->post(route('projects.switch'), ['project_id' => $project2->id]);
+
+        $this->assertEquals($project2->id, session('active_project_id'));
+        $response2->assertRedirect(route('dashboard'));
+    }
+
+    public function test_user_can_update_rab_node_category_and_subtotals_recalculate()
+    {
+        $project = Project::first();
+        $node = $project->rootRabNodes()->first();
+        $this->assertNotNull($node);
+
+        $response = $this->put(route('rab.nodes.update', $node->id), [
+            'code' => 'I-REV',
+            'name' => 'PEKERJAAN PERSIAPAN & TANAH DIREVISI',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $node->refresh();
+        $this->assertEquals('I-REV', $node->code);
+        $this->assertEquals('PEKERJAAN PERSIAPAN & TANAH DIREVISI', $node->name);
+    }
+
+    public function test_user_can_update_rab_item_and_subtotals_recalculate()
+    {
+        $project = Project::first();
+        $item = RabItem::first();
+        $this->assertNotNull($item);
+
+        $unit = Unit::first();
+
+        $response = $this->put(route('rab.items.update', $item->id), [
+            'item_no' => '1.99',
+            'name' => 'Pembersihan Lapangan Updated',
+            'volume' => 50,
+            'unit_id' => $unit->id,
+            'unit_price' => 200000,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $item->refresh();
+        $this->assertEquals('1.99', $item->item_no);
+        $this->assertEquals('Pembersihan Lapangan Updated', $item->name);
+        $this->assertEquals(50, (float) $item->volume);
+        $this->assertEquals(200000, (float) $item->unit_price);
+        $this->assertEquals(10000000, (float) $item->total_price);
+    }
+
+    public function test_user_can_update_rab_item_material()
+    {
+        $item = RabItem::first();
+        $material = Material::first();
+        $unit = Unit::first();
+
+        // Create a material breakdown
+        $itemMaterial = $item->materials()->create([
+            'material_id' => $material->id,
+            'volume' => 10,
+            'unit_id' => $unit->id,
+            'unit_price' => 50000,
+            'total_price' => 500000,
+            'input_by' => 1,
+        ]);
+
+        $response = $this->put(route('rab.materials.update', $itemMaterial->id), [
+            'material_id' => $material->id,
+            'volume' => 15,
+            'unit_id' => $unit->id,
+            'unit_price' => 60000,
+            'notes' => 'Catatan revisi',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $itemMaterial->refresh();
+        $this->assertEquals(15, (float) $itemMaterial->volume);
+        $this->assertEquals(60000, (float) $itemMaterial->unit_price);
+        $this->assertEquals(900000, (float) $itemMaterial->total_price);
+        $this->assertEquals('Catatan revisi', $itemMaterial->notes);
+    }
+
+    public function test_newly_created_rab_items_and_materials_do_not_appear_in_non_rab_monitoring()
+    {
+        // 1. Create a brand new project
+        $project = Project::create([
+            'name' => 'Proyek RAB Baru Monitoring Test',
+            'prototype_type' => 'Gedung Uji',
+            'floor_count' => 1,
+            'budget_year' => '2026',
+            'location_kds' => 'Zona A',
+            'foundation_type' => 'Batu Kali',
+            'alert_over_threshold_pct' => 10,
+            'alert_under_threshold_pct' => 5,
+        ]);
+
+        // 2. Create Level 1 Root Category
+        $rootNode = $project->rabNodes()->create([
+            'code' => 'I',
+            'name' => 'Pekerjaan ABCD',
+            'level' => 1,
+            'parent_id' => null,
+            'sort_order' => 1,
+        ]);
+
+        $unit = Unit::first();
+        $matParent = Material::first();
+        $matChild = Material::skip(1)->first();
+
+        // 3. Create RAB Item directly under Root Node (Level 1)
+        $rabItem = $rootNode->rabItems()->create([
+            'item_no' => '1.0',
+            'name' => 'ABC 1',
+            'volume' => 10,
+            'unit_id' => $unit->id,
+            'unit_price' => 10000000,
+            'total_price' => 100000000,
+            'sort_order' => 1,
+        ]);
+
+        // 4. Add BOM material (parent composite)
+        $parentItemMaterial = $rabItem->materials()->create([
+            'material_id' => $matParent->id,
+            'volume' => 50,
+            'unit_id' => $unit->id,
+            'unit_price' => 195000,
+            'total_price' => 9750000,
+            'input_by' => 1,
+        ]);
+
+        // 5. Add breakdown material (child leaf)
+        $childItemMaterial = $rabItem->materials()->create([
+            'material_id' => $matChild->id,
+            'parent_id' => $parentItemMaterial->id,
+            'volume' => 100,
+            'unit_id' => $unit->id,
+            'unit_price' => 16500,
+            'total_price' => 1650000,
+            'input_by' => 1,
+        ]);
+
+        // 6. View dashboard for this project
+        $response = $this->get('/?project_id='.$project->id);
+        $response->assertStatus(200);
+
+        // Check view variables
+        $nonRabPurchases = $response->viewData('nonRabPurchases');
+        $stats = $response->viewData('stats');
+
+        // Neither the parent nor the child breakdown material should be in nonRabPurchases!
+        $nonRabMaterialIds = collect($nonRabPurchases)->pluck('material_id')->toArray();
+        $this->assertNotContains($matParent->id, $nonRabMaterialIds, 'Parent material in RAB must not be in Non-RAB purchases');
+        $this->assertNotContains($matChild->id, $nonRabMaterialIds, 'Breakdown material in RAB must not be in Non-RAB purchases');
+        $this->assertEmpty($nonRabPurchases, 'No purchases have been made, so non-RAB purchases recap should be empty');
+        $this->assertEquals(0, $stats['non_rab_items_count']);
+        $this->assertEquals(0, $stats['non_rab_total_cost']);
+    }
+
+    public function test_material_status_can_be_toggled(): void
+    {
+        $material = Material::first();
+        $this->assertTrue((bool) $material->is_active);
+
+        $response = $this->post(route('materials.toggle_status', $material));
+        $response->assertSessionHas('success');
+        $this->assertFalse((bool) $material->refresh()->is_active);
+
+        $response2 = $this->post(route('materials.toggle_status', $material));
+        $response2->assertSessionHas('success');
+        $this->assertTrue((bool) $material->refresh()->is_active);
+    }
+
+    public function test_material_can_be_updated_with_inactive_status(): void
+    {
+        $material = Material::first();
+        $unit = Unit::first();
+
+        $response = $this->put(route('materials.update', $material), [
+            'name' => $material->name,
+            'code' => $material->code,
+            'category' => $material->category,
+            'default_unit_id' => $unit->id,
+            'standard_price' => 50000,
+            'is_active' => '0',
+        ]);
+
+        $response->assertSessionHas('success');
+        $this->assertFalse((bool) $material->refresh()->is_active);
+    }
+
+    public function test_material_deletion_blocked_by_history_sets_deactivation_flash(): void
+    {
+        // Find a material referenced by PO
+        $material = Material::whereHas('purchaseOrderItems')->first();
+        $this->assertNotNull($material);
+
+        $response = $this->delete(route('materials.destroy', $material));
+        $response->assertSessionHas('error');
+        $response->assertSessionHas('deactivate_material_id', $material->id);
+    }
 }

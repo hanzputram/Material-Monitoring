@@ -2,12 +2,22 @@
 
 @section('title', 'Rekap Pembelian per Toko / Supplier (Lintas Proyek)')
 @section('page_title', 'Rekap Pembelian Toko Lintas Proyek')
-@section('page_subtitle', 'Agregasi terpadu nilai pesanan, penerimaan barang, faktur tagihan, uang muka, dan sisa hutang per supplier di semua proyek')
+@section('page_subtitle', 'Agregasi terpadu nilai pesanan, penerimaan barang, faktur tagihan, dan sisa hutang per supplier di semua proyek')
 
 @section('content')
-<div class="space-y-6" x-data="{
+<div class="space-y-6" x-data="Object.assign(tableColumnHandler('supplier_summary_table', [
+    { key: 'supplier', label: 'Toko / Supplier', visible: true },
+    { key: 'projects', label: 'Proyek', visible: true },
+    { key: 'po_amount', label: 'Nilai PO (Rp)', visible: true },
+    { key: 'do_count', label: 'DO Diterima', visible: true },
+    { key: 'invoice_net', label: 'Faktur Masuk (Net)', visible: true },
+    { key: 'paid_amount', label: 'Telah Dibayar', visible: true },
+    { key: 'outstanding', label: 'Sisa Hutang', visible: true },
+    { key: 'status', label: 'Status', visible: true },
+    { key: 'details', label: 'Rincian', visible: true }
+]), {
     expandedSuppliers: {}
-}">
+})">
 
     <!-- Sub-Navigasi Modul 6 Tab & Quick Action -->
     <div class="card-clean p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
@@ -132,8 +142,11 @@
                 <h3 class="text-sm font-bold text-slate-900">Rekapitulasi Pembelian &amp; Pelunasan per Toko</h3>
                 <p class="text-xs text-slate-500">Ringkasan transaksi kumulatif setiap toko beserta rincian breakdown proyek</p>
             </div>
-            <div class="text-xs text-slate-400">
-                Menampilkan <span class="font-bold text-slate-700">{{ $supplierSummaries->count() }}</span> data toko rekanan
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400">
+                    Menampilkan <span class="font-bold text-slate-700">{{ $supplierSummaries->count() }}</span> data toko rekanan
+                </span>
+                <x-table-column-toggle storageKey="supplier_summary_table" />
             </div>
         </div>
 
@@ -147,19 +160,18 @@
             </div>
         @else
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-xs min-w-[1300px]">
+                <table class="w-full text-left border-collapse text-xs min-w-[1200px]">
                     <thead>
                         <tr class="bg-slate-50/90 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <th class="py-3.5 px-4 text-left w-[240px]">Toko / Supplier</th>
-                            <th class="py-3.5 px-3 text-center w-[90px]">Proyek</th>
-                            <th class="py-3.5 px-4 text-right w-[145px]">Nilai PO (Rp)</th>
-                            <th class="py-3.5 px-3 text-center w-[80px]">DO</th>
-                            <th class="py-3.5 px-4 text-right w-[135px]">Uang Muka (DP)</th>
-                            <th class="py-3.5 px-4 text-right w-[150px]">Faktur Masuk (Net)</th>
-                            <th class="py-3.5 px-4 text-right w-[135px]">Telah Dibayar</th>
-                            <th class="py-3.5 px-4 text-right w-[145px]">Sisa Hutang</th>
-                            <th class="py-3.5 px-3 text-center w-[120px]">Status</th>
-                            <th class="py-3.5 px-4 text-center w-[110px]">Rincian</th>
+                            <th x-show="isColVisible('supplier')" class="py-3.5 px-4 text-left w-[240px]">Toko / Supplier</th>
+                            <th x-show="isColVisible('projects')" class="py-3.5 px-3 text-center w-[90px]">Proyek</th>
+                            <th x-show="isColVisible('po_amount')" class="py-3.5 px-4 text-right w-[145px]">Nilai PO (Rp)</th>
+                            <th x-show="isColVisible('do_count')" class="py-3.5 px-3 text-center w-[80px]">DO</th>
+                            <th x-show="isColVisible('invoice_net')" class="py-3.5 px-4 text-right w-[150px]">Faktur Masuk (Net)</th>
+                            <th x-show="isColVisible('paid_amount')" class="py-3.5 px-4 text-right w-[135px]">Telah Dibayar</th>
+                            <th x-show="isColVisible('outstanding')" class="py-3.5 px-4 text-right w-[145px]">Sisa Hutang</th>
+                            <th x-show="isColVisible('status')" class="py-3.5 px-3 text-center w-[120px]">Status</th>
+                            <th x-show="isColVisible('details')" class="py-3.5 px-4 text-center w-[110px]">Rincian</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -170,7 +182,7 @@
                             @endphp
                             <tr class="hover:bg-slate-50/75 transition-colors {{ $item['has_debt'] ? 'bg-amber-50/15' : '' }}">
                                 <!-- 1. Toko & Kontak -->
-                                <td class="py-3.5 px-4 align-middle">
+                                <td x-show="isColVisible('supplier')" class="py-3.5 px-4 align-middle">
                                     <div class="font-extrabold text-slate-900 text-sm whitespace-nowrap">
                                         {{ $s->name }}
                                     </div>
@@ -186,14 +198,14 @@
                                 </td>
 
                                 <!-- 2. Proyek -->
-                                <td class="py-3.5 px-3 text-center align-middle whitespace-nowrap">
+                                <td x-show="isColVisible('projects')" class="py-3.5 px-3 text-center align-middle whitespace-nowrap">
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                                         {{ $item['projects_count'] }} Proyek
                                     </span>
                                 </td>
 
                                 <!-- 3. Nilai PO (Rp) -->
-                                <td class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono">
+                                <td x-show="isColVisible('po_amount')" class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono">
                                     <div class="font-bold text-slate-900 text-xs">
                                         Rp {{ number_format($item['total_po_amount'], 0, ',', '.') }}
                                     </div>
@@ -203,19 +215,14 @@
                                 </td>
 
                                 <!-- 4. DO Diterima -->
-                                <td class="py-3.5 px-3 text-center align-middle whitespace-nowrap">
+                                <td x-show="isColVisible('do_count')" class="py-3.5 px-3 text-center align-middle whitespace-nowrap">
                                     <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-mono font-semibold {{ $item['do_count'] > 0 ? 'bg-slate-100 text-slate-800' : 'text-slate-400' }}">
                                         {{ $item['do_count'] }} DO
                                     </span>
                                 </td>
 
-                                <!-- 5. Uang Muka (DP) -->
-                                <td class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono text-xs {{ $item['total_dp_amount'] > 0 ? 'font-bold text-purple-700' : 'text-slate-400' }}">
-                                    Rp {{ number_format($item['total_dp_amount'], 0, ',', '.') }}
-                                </td>
-
-                                <!-- 6. Faktur Masuk (Net) -->
-                                <td class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono">
+                                <!-- 5. Faktur Masuk (Net) -->
+                                <td x-show="isColVisible('invoice_net')" class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono">
                                     <div class="font-bold text-slate-900 text-xs">
                                         Rp {{ number_format($item['total_invoice_net'], 0, ',', '.') }}
                                     </div>
@@ -224,8 +231,8 @@
                                     </div>
                                 </td>
 
-                                <!-- 7. Telah Dibayar -->
-                                <td class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono text-xs {{ $item['total_paid_amount'] > 0 ? 'font-bold text-emerald-700' : 'text-slate-400' }}">
+                                <!-- 6. Telah Dibayar -->
+                                <td x-show="isColVisible('paid_amount')" class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono text-xs {{ $item['total_paid_amount'] > 0 ? 'font-bold text-emerald-700' : 'text-slate-400' }}">
                                     <div>Rp {{ number_format($item['total_paid_amount'], 0, ',', '.') }}</div>
                                     @if($item['total_invoice_net'] > 0 && $item['total_paid_amount'] > 0)
                                         <div class="text-[10px] text-emerald-600 font-sans mt-0.5">
@@ -234,13 +241,32 @@
                                     @endif
                                 </td>
 
-                                <!-- 8. Sisa Hutang -->
-                                <td class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono text-xs font-black {{ $item['has_debt'] ? 'text-rose-600' : 'text-slate-400' }}">
+                                <!-- 7. Sisa Hutang -->
+                                <td x-show="isColVisible('outstanding')" class="py-3.5 px-4 text-right align-middle whitespace-nowrap font-mono text-xs font-black {{ $item['has_debt'] ? 'text-rose-600' : 'text-slate-400' }}">
                                     Rp {{ number_format($item['outstanding_balance'], 0, ',', '.') }}
                                 </td>
 
-                                <!-- 9. Status -->
-                                <td class="py-3.5 px-3 text-center align-middle whitespace-nowrap">
+                                <!-- 8. Status -->
+                                <td x-show="isColVisible('status')" class="py-3.5 px-3 text-center align-middle whitespace-nowrap">
+                                    @if($item['has_debt'])
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                                            Ada Hutang
+                                        </span>
+                                    @elseif($item['is_settled'])
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            Lunas
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600">
+                                            Nihil
+                                        </span>
+                                    @endif
+                                </td>
+
+                                <!-- 9. Rincian Breakdown -->
+                                <td x-show="isColVisible('details')" class="py-3.5 px-4 text-center align-middle whitespace-nowrap">
                                     @if($item['has_debt'])
                                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">
                                             <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
@@ -272,7 +298,7 @@
 
                             <!-- ROW DRILL-DOWN RINCIAN PER PROYEK -->
                             <tr x-show="expandedSuppliers[{{ $suppId }}]" x-cloak class="bg-slate-50/90 border-b border-slate-200">
-                                <td colspan="10" class="p-4 sm:p-5">
+                                <td colspan="9" class="p-4 sm:p-5">
                                     <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
                                         <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                                             <div class="flex items-center gap-2">
@@ -290,13 +316,12 @@
                                             <p class="text-xs text-slate-400 italic py-2">Belum ada riwayat transaksi pada proyek manapun.</p>
                                         @else
                                             <div class="overflow-x-auto">
-                                                <table class="w-full text-left text-xs min-w-[900px]">
+                                                <table class="w-full text-left text-xs min-w-[850px]">
                                                     <thead>
                                                         <tr class="text-[10px] font-bold text-slate-400 uppercase border-b border-slate-100 bg-slate-50/50">
                                                             <th class="py-2.5 px-3 text-left w-[240px]">Nama Proyek</th>
                                                             <th class="py-2.5 px-3 text-right w-[140px]">Pesanan PO</th>
                                                             <th class="py-2.5 px-3 text-center w-[80px]">DO Masuk</th>
-                                                            <th class="py-2.5 px-3 text-right w-[120px]">Uang Muka (DP)</th>
                                                             <th class="py-2.5 px-3 text-right w-[140px]">Tagihan Faktur (Net)</th>
                                                             <th class="py-2.5 px-3 text-right w-[130px]">Telah Terbayar</th>
                                                             <th class="py-2.5 px-3 text-right w-[140px]">Sisa Hutang</th>
@@ -315,9 +340,6 @@
                                                                 </td>
                                                                 <td class="py-2.5 px-3 text-center font-mono font-semibold text-slate-600 whitespace-nowrap align-middle">
                                                                     {{ $pb['do_count'] }} DO
-                                                                </td>
-                                                                <td class="py-2.5 px-3 text-right font-mono text-purple-700 whitespace-nowrap align-middle">
-                                                                    Rp {{ number_format($pb['dp_total'], 0, ',', '.') }}
                                                                 </td>
                                                                 <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap align-middle">
                                                                     <span class="font-bold text-slate-900">Rp {{ number_format($pb['invoice_total'], 0, ',', '.') }}</span>
@@ -357,31 +379,31 @@
                     </tbody>
                     <tfoot class="bg-slate-100/90 font-bold border-t-2 border-slate-300 text-xs">
                         <tr>
-                            <td class="py-3.5 px-4 text-slate-800 whitespace-nowrap">
+                            <td x-show="isColVisible('supplier')" class="py-3.5 px-4 text-slate-800 whitespace-nowrap">
                                 TOTAL KESELURUHAN ({{ $supplierSummaries->count() }} Toko)
                             </td>
-                            <td class="py-3.5 px-3 text-center text-slate-400 font-mono">
+                            <td x-show="isColVisible('projects')" class="py-3.5 px-3 text-center text-slate-400 font-mono">
                                 -
                             </td>
-                            <td class="py-3.5 px-4 text-right font-mono text-slate-900 whitespace-nowrap">
+                            <td x-show="isColVisible('po_amount')" class="py-3.5 px-4 text-right font-mono text-slate-900 whitespace-nowrap">
                                 Rp {{ number_format($globalStats['grand_po_amount'], 0, ',', '.') }}
                             </td>
-                            <td class="py-3.5 px-3 text-center font-mono text-slate-700 whitespace-nowrap">
+                            <td x-show="isColVisible('do_count')" class="py-3.5 px-3 text-center font-mono text-slate-700 whitespace-nowrap">
                                 {{ $supplierSummaries->sum('do_count') }} DO
                             </td>
-                            <td class="py-3.5 px-4 text-right font-mono text-purple-700 whitespace-nowrap">
-                                Rp {{ number_format($globalStats['grand_dp_amount'], 0, ',', '.') }}
-                            </td>
-                            <td class="py-3.5 px-4 text-right font-mono text-slate-900 whitespace-nowrap">
+                            <td x-show="isColVisible('invoice_net')" class="py-3.5 px-4 text-right font-mono text-slate-900 whitespace-nowrap">
                                 Rp {{ number_format($globalStats['grand_invoice_amount'], 0, ',', '.') }}
                             </td>
-                            <td class="py-3.5 px-4 text-right font-mono text-emerald-700 whitespace-nowrap">
+                            <td x-show="isColVisible('paid_amount')" class="py-3.5 px-4 text-right font-mono text-emerald-700 whitespace-nowrap">
                                 Rp {{ number_format($globalStats['grand_paid_amount'], 0, ',', '.') }}
                             </td>
-                            <td class="py-3.5 px-4 text-right font-mono font-black text-rose-600 whitespace-nowrap">
+                            <td x-show="isColVisible('outstanding')" class="py-3.5 px-4 text-right font-mono font-black text-rose-600 whitespace-nowrap">
                                 Rp {{ number_format($globalStats['grand_outstanding'], 0, ',', '.') }}
                             </td>
-                            <td colspan="2" class="py-3.5 px-4 text-center text-slate-400 font-normal whitespace-nowrap">
+                            <td x-show="isColVisible('status')" class="py-3.5 px-3 text-center text-slate-400 font-mono">
+                                -
+                            </td>
+                            <td x-show="isColVisible('details')" class="py-3.5 px-4 text-center text-slate-400 font-normal whitespace-nowrap">
                                 Rekap Terpadu
                             </td>
                         </tr>

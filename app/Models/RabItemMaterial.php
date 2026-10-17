@@ -37,6 +37,12 @@ class RabItemMaterial extends Model
                         $item->rabNode->project_id,
                         $itemMaterial->material_id
                     );
+                    if ($itemMaterial->parent_id && $itemMaterial->parent) {
+                        MaterialRealization::recalculateForProjectMaterial(
+                            $item->rabNode->project_id,
+                            $itemMaterial->parent->material_id
+                        );
+                    }
                 }
             }
         });
@@ -53,6 +59,12 @@ class RabItemMaterial extends Model
                         $item->rabNode->project_id,
                         $itemMaterial->material_id
                     );
+                    if ($itemMaterial->parent_id && $itemMaterial->parent) {
+                        MaterialRealization::recalculateForProjectMaterial(
+                            $item->rabNode->project_id,
+                            $itemMaterial->parent->material_id
+                        );
+                    }
                 }
             }
         });

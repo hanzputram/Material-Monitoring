@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
 
     // 1. Dashboard, Detail Material & Project Switcher (Modul: dashboard)
     Route::get('/', [DashboardController::class, 'index'])->middleware('module:dashboard')->name('dashboard');
+    Route::get('/monitoring/po-menggantung', [ProcurementController::class, 'outstandingPoIndex'])->middleware('module:dashboard')->name('monitoring.pending-po');
     Route::get('/monitoring/material/{realization}', [DashboardController::class, 'showMaterialDetail'])->middleware('module:dashboard')->name('monitoring.material.show');
     Route::post('/projects/switch', [DashboardController::class, 'switchProject'])->name('projects.switch');
 
@@ -67,6 +68,7 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/items/{item}/material', [RabBuilderController::class, 'storeItemMaterial'])->name('items.material.store');
         Route::post('/materials/{material}/breakdown', [RabBuilderController::class, 'storeMaterialBreakdown'])->name('materials.breakdown');
+        Route::put('/materials/{material}', [RabBuilderController::class, 'updateItemMaterial'])->name('materials.update');
         Route::delete('/materials/{material}', [RabBuilderController::class, 'destroyItemMaterial'])->name('materials.destroy');
         Route::post('/items/{item}/clone-bom', [RabBuilderController::class, 'cloneBom'])->name('items.clone_bom');
 
@@ -84,7 +86,9 @@ Route::middleware('auth')->group(function () {
 
         // Submodul 1: Purchase Order (PO)
         Route::get('/po', [ProcurementController::class, 'poIndex'])->middleware('module:po_read')->name('po.index');
+        Route::get('/outstanding-po', [ProcurementController::class, 'outstandingPoIndex'])->name('outstanding-po');
         Route::post('/po', [ProcurementController::class, 'storePo'])->middleware('module:po_write')->name('po.store');
+        Route::post('/po/{purchaseOrder}/update-do', [ProcurementController::class, 'updatePoDoNumber'])->middleware('module:po_write')->name('po.update_do');
         Route::get('/po/{purchaseOrder}/pdf', [ProcurementController::class, 'downloadPoPdf'])->middleware('module:po_read')->name('po.pdf');
 
         // Submodul 2: Surat Jalan (DO Lapangan)
@@ -151,9 +155,14 @@ Route::middleware('auth')->group(function () {
         Route::delete('/project/{equipment}', [EquipmentController::class, 'destroyProjectEquipment'])->name('project.destroy');
     });
 
-    // 8.1 Pekerja / Tukang Master & Alokasi Proyek (Modul: workers)
+    // 8.1 Mandor & Pekerjaan Borongan (Lump Sum / LS) (Modul: workers)
     Route::prefix('workers')->name('workers.')->middleware('module:workers')->group(function () {
         Route::get('/', [WorkerController::class, 'index'])->name('index');
+        Route::post('/borongan', [WorkerController::class, 'storeBorongan'])->name('borongan.store');
+        Route::put('/borongan/{borongan}', [WorkerController::class, 'updateBorongan'])->name('borongan.update');
+        Route::delete('/borongan/{borongan}', [WorkerController::class, 'destroyBorongan'])->name('borongan.destroy');
+        Route::post('/borongan/panjar', [WorkerController::class, 'storePanjar'])->name('borongan.panjar.store');
+        Route::delete('/borongan/panjar/{panjar}', [WorkerController::class, 'destroyPanjar'])->name('borongan.panjar.destroy');
         Route::post('/master', [WorkerController::class, 'storeMaster'])->name('master.store');
         Route::put('/master/{worker}', [WorkerController::class, 'updateMaster'])->name('master.update');
         Route::delete('/master/{worker}', [WorkerController::class, 'destroyMaster'])->name('master.destroy');

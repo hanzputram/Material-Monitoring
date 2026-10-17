@@ -15,6 +15,7 @@ use App\Models\RabItem;
 use App\Models\Supplier;
 use App\Models\Unit;
 use App\Services\PurchaseOrderPdfService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -133,6 +134,7 @@ class ProcurementController extends Controller
             'supplier_id' => 'required|exists:suppliers,id',
             'po_number' => 'required|string|unique:purchase_orders,po_number',
             'po_date' => 'required|date',
+            'delivery_order_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
@@ -147,6 +149,7 @@ class ProcurementController extends Controller
             'supplier_id' => $validated['supplier_id'],
             'po_number' => $validated['po_number'],
             'po_date' => $validated['po_date'],
+            'delivery_order_number' => $validated['delivery_order_number'] ?? null,
             'notes' => $validated['notes'],
             'status' => 'sent',
             'created_by' => Auth::id(),
@@ -165,6 +168,41 @@ class ProcurementController extends Controller
 
         return redirect()->route('procurement.po.index', ['project_id' => $po->project_id])
             ->with('success', "Pesanan Pembelian (PO) {$po->po_number} berhasil dibuat!");
+    }
+
+    /**
+     * Catat atau perbarui nomor Surat Jalan (DO/SJ) supplier yang dijadwalkan untuk PO tertentu
+     */
+    public function updatePoDoNumber(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        if (! Auth::user()->canWritePo()) {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk mengedit Pesanan Pembelian.');
+        }
+
+        $validated = $request->validate([
+            'delivery_order_number' => 'nullable|string|max:100',
+        ]);
+
+        $newDoNumber = $validated['delivery_order_number'] ? trim($validated['delivery_order_number']) : null;
+
+        if ($newDoNumber) {
+            $alreadyUsed = DeliveryOrder::where('project_id', $purchaseOrder->project_id)
+                ->where('do_number', $newDoNumber)
+                ->exists();
+            if ($alreadyUsed) {
+                return back()->with('error', "Nomor Surat Jalan \"{$newDoNumber}\" sudah pernah dicatat / diterima sebelumnya di proyek ini. Harap gunakan nomor Surat Jalan yang baru.");
+            }
+        }
+
+        $purchaseOrder->update([
+            'delivery_order_number' => $newDoNumber,
+        ]);
+
+        $msg = $purchaseOrder->delivery_order_number
+            ? "Nomor DO/SJ untuk PO {$purchaseOrder->po_number} berhasil diperbarui: {$purchaseOrder->delivery_order_number}. Petugas lapangan kini dapat memilih nomor ini saat barang tiba."
+            : "Nomor DO/SJ untuk PO {$purchaseOrder->po_number} telah dikosongkan.";
+
+        return back()->with('success', $msg);
     }
 
     /**
@@ -231,6 +269,55 @@ class ProcurementController extends Controller
         $invCount = Auth::user()->canReadInvoice()
             ? Invoice::where('project_id', $project->id)->count()
             : 0;
+        $pendingPoCount = $purchaseOrders->filter(fn ($p) => $p->getFulfillmentDetails()['has_pending'])->count();
+
+        // Kumpulkan nomor DO yang sudah pernah diterima di proyek ini agar TIDAK dapat diinput ulang
+        $existingDoNumbers = $deliveryOrders
+            ->pluck('do_number')
+            ->map(fn ($n) => trim($n))
+            ->unique()
+            ->toArray();
+
+        // Hanya tampilkan jadwal DO yang nomornya belum pernah diinput sebagai DO dan masih memiliki sisa barang
+        $scheduledDeliveries = $purchaseOrders
+            ->filter(fn ($po) => ! empty($po->delivery_order_number) && ! in_array(trim($po->delivery_order_number), $existingDoNumbers))
+            ->map(function ($po) {
+                $itemsWithRemaining = $po->items->map(function ($it) use ($po) {
+                    $receivedQty = (float) DeliveryOrderItem::where('purchase_order_id', $po->id)
+                        ->where('material_id', $it->material_id)
+                        ->sum('qty_received');
+                    $remaining = max(0, (float) $it->qty_ordered - $receivedQty);
+
+                    return [
+                        'material_id' => $it->material_id,
+                        'material_name' => $it->material?->name,
+                        'material_code' => $it->material?->code,
+                        'unit_id' => $it->unit_id ?? $it->material?->default_unit_id,
+                        'unit_code' => $it->unit?->code,
+                        'qty_ordered' => (float) $it->qty_ordered,
+                        'qty_received' => $receivedQty,
+                        'qty_remaining' => $remaining,
+                    ];
+                })->filter(fn ($it) => $it['qty_remaining'] > 0)->values();
+
+                return [
+                    'po_id' => $po->id,
+                    'po_number' => $po->po_number,
+                    'do_number' => $po->delivery_order_number,
+                    'supplier_id' => $po->supplier_id,
+                    'supplier_name' => $po->supplier?->name ?? 'Supplier',
+                    'items' => $itemsWithRemaining->map(fn ($it) => [
+                        'material_id' => $it['material_id'],
+                        'material_name' => $it['material_name'],
+                        'material_code' => $it['material_code'],
+                        'unit_id' => $it['unit_id'],
+                        'unit_code' => $it['unit_code'],
+                        'qty_ordered' => $it['qty_remaining'],
+                    ])->values(),
+                ];
+            })
+            ->filter(fn ($sd) => count($sd['items']) > 0)
+            ->values();
 
         return view('procurement.do', compact(
             'project',
@@ -240,6 +327,7 @@ class ProcurementController extends Controller
             'units',
             'deliveryOrders',
             'purchaseOrders',
+            'scheduledDeliveries',
             'poCount',
             'invCount'
         ));
@@ -267,6 +355,17 @@ class ProcurementController extends Controller
             'items.*.qty_received' => 'required|numeric|min:0.0001',
             'items.*.unit_id' => 'required|exists:units,id',
         ]);
+
+        // Cek apakah nomor Surat Jalan (DO) ini sudah pernah diinput sebelumnya di proyek ini
+        $existingDo = DeliveryOrder::where('project_id', $validated['project_id'])
+            ->where('do_number', trim($validated['do_number']))
+            ->first();
+
+        if ($existingDo) {
+            return back()
+                ->withInput()
+                ->with('error', "Nomor Surat Jalan \"{$validated['do_number']}\" sudah pernah dicatat / diterima sebelumnya di proyek ini (tgl ".Carbon::parse($existingDo->do_date)->format('d/m/Y').') dan tidak dapat diinput ulang.');
+        }
 
         $filePath = $request->file('attachment')->store('delivery_orders', 'public');
 
@@ -305,9 +404,9 @@ class ProcurementController extends Controller
         }
 
         foreach ($validated['items'] as $item) {
-            $itemPoId = ! empty($item['purchase_order_id'])
-                ? (int) $item['purchase_order_id']
-                : null;
+            $itemPoId = array_key_exists('purchase_order_id', $item)
+                ? (! empty($item['purchase_order_id']) ? (int) $item['purchase_order_id'] : null)
+                : $primaryPoId;
 
             DeliveryOrderItem::create([
                 'delivery_order_id' => $do->id,
@@ -487,5 +586,107 @@ class ProcurementController extends Controller
 
         return redirect()->route('procurement.invoices.index', ['project_id' => $projectId])
             ->with('success', "Faktur Pembelian {$invoiceNumber} berhasil dihapus.");
+    }
+
+    /**
+     * Dashboard Monitoring PO Menggantung (Barang Belum Diterima Sepenuhnya)
+     */
+    public function outstandingPoIndex(Request $request)
+    {
+        [$project, $projects] = $this->getActiveProject($request);
+        if (! $project) {
+            return redirect()->route('projects.create')->with('info', 'Belum ada proyek aktif. Silakan buat proyek baru terlebih dahulu.');
+        }
+
+        $supplierFilter = $request->get('supplier_id');
+        $statusFilter = $request->get('status', 'all'); // 'all', 'partial', 'unfulfilled', 'needs_do'
+        $search = $request->get('search');
+
+        $query = PurchaseOrder::where('project_id', $project->id)
+            ->where('status', '!=', 'cancelled')
+            ->with(['supplier', 'creator', 'items.material.defaultUnit', 'deliveryOrders', 'directDeliveryOrders'])
+            ->orderByDesc('po_date');
+
+        if ($supplierFilter) {
+            $query->where('supplier_id', $supplierFilter);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', "%{$search}%")
+                    ->orWhere('delivery_order_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('items.material', fn ($mq) => $mq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $allPos = $query->get();
+
+        // Enrich with fulfillment details
+        $enrichedPos = $allPos->map(function ($po) {
+            $po->fulfillment = $po->getFulfillmentDetails();
+
+            return $po;
+        });
+
+        // Filter only outstanding POs (has pending items)
+        $outstandingPos = $enrichedPos->filter(function ($po) use ($statusFilter) {
+            if (! $po->fulfillment['has_pending']) {
+                return false;
+            }
+
+            if ($statusFilter === 'partial') {
+                return $po->fulfillment['is_partial'];
+            } elseif ($statusFilter === 'unfulfilled') {
+                return ! $po->fulfillment['has_received'];
+            } elseif ($statusFilter === 'needs_do') {
+                return $po->fulfillment['needs_new_do_number'];
+            }
+
+            return true;
+        })->values();
+
+        // Summary KPIs
+        $totalPendingPos = $enrichedPos->filter(fn ($p) => $p->fulfillment['has_pending'])->count();
+        $totalPartialPos = $enrichedPos->filter(fn ($p) => $p->fulfillment['is_partial'])->count();
+        $totalNeedsDo = $enrichedPos->filter(fn ($p) => $p->fulfillment['needs_new_do_number'])->count();
+
+        $totalPendingItemsCount = 0;
+        $totalPendingValue = 0;
+        foreach ($outstandingPos as $p) {
+            foreach ($p->fulfillment['items'] as $item) {
+                if ($item['qty_remaining'] > 0) {
+                    $totalPendingItemsCount++;
+                    $poItem = $p->items->firstWhere('id', $item['item_id']);
+                    $price = $poItem ? (float) $poItem->unit_price : 0;
+                    $totalPendingValue += ($item['qty_remaining'] * $price);
+                }
+            }
+        }
+
+        $suppliers = Supplier::whereHas('purchaseOrders', fn ($q) => $q->where('project_id', $project->id))->orderBy('name')->get();
+
+        // Badge counters for navigation
+        $poCount = Auth::user()->canReadPo() ? PurchaseOrder::where('project_id', $project->id)->count() : 0;
+        $invCount = Auth::user()->canReadInvoice() ? Invoice::where('project_id', $project->id)->count() : 0;
+        $pendingPoCount = $totalPendingPos;
+
+        return view('procurement.outstanding_po', compact(
+            'project',
+            'projects',
+            'outstandingPos',
+            'totalPendingPos',
+            'totalPartialPos',
+            'totalNeedsDo',
+            'totalPendingItemsCount',
+            'totalPendingValue',
+            'suppliers',
+            'supplierFilter',
+            'statusFilter',
+            'search',
+            'poCount',
+            'invCount',
+            'pendingPoCount'
+        ));
     }
 }

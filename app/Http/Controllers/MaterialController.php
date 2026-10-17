@@ -45,6 +45,7 @@ class MaterialController extends Controller
         $units = Unit::withCount('materials')->orderBy('code')->get();
 
         $categories = [
+            'operasional_kendaraan' => 'Operasional Kendaraan',
             'bahan_dasar' => 'Bahan Dasar / Mentah',
             'bahan_jadi' => 'Bahan Jadi / Komposit',
             'alat_bantu' => 'Alat Bantu & Perlengkapan',
@@ -54,11 +55,20 @@ class MaterialController extends Controller
             'lainnya' => 'Lain-lain',
         ];
 
+        // Gabungkan kategori kustom yang ada di database secara dinamis
+        $dbCategories = Material::distinct()->whereNotNull('category')->pluck('category')->toArray();
+        foreach ($dbCategories as $dbCat) {
+            if (! empty($dbCat) && ! isset($categories[$dbCat])) {
+                $categories[$dbCat] = ucwords(str_replace('_', ' ', $dbCat));
+            }
+        }
+
         $stats = [
             'total_materials' => Material::count(),
             'active_materials' => Material::where('is_active', true)->count(),
             'total_basic' => Material::where('category', 'bahan_dasar')->count(),
             'total_composite' => Material::where('category', 'bahan_jadi')->count(),
+            'total_operasional_kendaraan' => Material::where('category', 'operasional_kendaraan')->count(),
             'total_units' => Unit::count(),
         ];
 
@@ -100,7 +110,7 @@ class MaterialController extends Controller
         }
 
         $validated['standard_price'] = $validated['standard_price'] ?? 0;
-        $validated['is_active'] = $request->has('is_active');
+        $validated['is_active'] = $request->boolean('is_active', true);
 
         $material = Material::create($validated);
 
@@ -131,7 +141,7 @@ class MaterialController extends Controller
         ]);
 
         $validated['standard_price'] = $validated['standard_price'] ?? 0;
-        $validated['is_active'] = $request->has('is_active');
+        $validated['is_active'] = $request->boolean('is_active');
 
         $material->update($validated);
 
@@ -142,15 +152,24 @@ class MaterialController extends Controller
     /**
      * Toggle status aktif material
      */
-    public function toggleStatus(Material $material)
+    public function toggleStatus(Request $request, Material $material)
     {
         $material->is_active = ! $material->is_active;
         $material->save();
 
         $statusStr = $material->is_active ? 'diaktifkan' : 'dinonaktifkan';
+        $message = "Status material \"{$material->name}\" berhasil {$statusStr}.";
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'is_active' => $material->is_active,
+            ]);
+        }
 
         return redirect()->back()
-            ->with('success', "Status material \"{$material->name}\" berhasil {$statusStr}.");
+            ->with('success', $message);
     }
 
     /**
@@ -165,7 +184,10 @@ class MaterialController extends Controller
 
         if ($totalUsage > 0) {
             return redirect()->route('materials.index', ['tab' => 'materials'])
-                ->with('error', "Material \"{$material->name}\" tidak dapat dihapus permanen karena telah tercatat dalam riwayat ({$rabUsage} BOM RAB, {$poUsage} PO, {$doUsage} Surat Jalan DO). Anda dapat menonaktifkan statusnya agar tidak muncul pada pilihan input baru.");
+                ->with('error', "Material \"{$material->name}\" tidak dapat dihapus permanen karena telah tercatat dalam riwayat ({$rabUsage} BOM RAB, {$poUsage} PO, {$doUsage} Surat Jalan DO). Anda dapat menonaktifkan statusnya agar tidak muncul pada pilihan input baru.")
+                ->with('deactivate_material_id', $material->id)
+                ->with('deactivate_material_name', $material->name)
+                ->with('deactivate_material_is_active', $material->is_active);
         }
 
         $name = $material->name;
@@ -250,13 +272,14 @@ class MaterialController extends Controller
     private function generateMaterialCode(string $category): string
     {
         $prefix = match ($category) {
+            'operasional_kendaraan' => 'OPS-KND',
             'bahan_dasar' => 'MAT-BSR',
             'bahan_jadi' => 'MAT-JDI',
             'alat_bantu' => 'MAT-ALT',
             'finishing' => 'MAT-FNS',
             'sanitasi' => 'MAT-SNT',
             'elektrikal' => 'MAT-ELK',
-            default => 'MAT-GEN',
+            default => 'MAT-'.strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $category) ?: 'GEN', 0, 3)),
         };
 
         $count = Material::where('code', 'like', "{$prefix}-%")->count() + 1;

@@ -11,6 +11,15 @@ export function initCustomSelect(select) {
     ) {
         return;
     }
+
+    // Clean up any stray existing custom-dropdown-root sibling
+    let next = select.nextElementSibling;
+    while (next && next.classList.contains('custom-dropdown-root')) {
+        const toRemove = next;
+        next = next.nextElementSibling;
+        toRemove.remove();
+    }
+
     select.dataset.customSelect = 'true';
 
     // Visually hide native select while keeping it focusable/validatable by browser forms

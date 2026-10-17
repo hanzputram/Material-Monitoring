@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MandorBorongan;
+use App\Models\MandorBoronganPanjar;
 use App\Models\Project;
 use App\Models\ProjectWorker;
 use App\Models\Worker;
@@ -44,10 +46,45 @@ class WorkerController extends Controller
         $project = Project::find($projectId) ?? $projects->first();
         session(['active_project_id' => $project->id]);
 
-        $activeTab = $request->query('tab', 'project');
+        $activeTab = $request->query('tab', 'borongan');
         $search = trim((string) $request->query('search', ''));
         $tradeFilter = $request->query('trade', 'all');
         $statusFilter = $request->query('status', '');
+
+        // 0. Mandor & Pekerjaan Borongan (Lump Sum / LS)
+        $boronganQuery = MandorBorongan::where('project_id', $project->id);
+
+        if (! empty($search)) {
+            $boronganQuery->where(function ($q) use ($search) {
+                $q->where('mandor_name', 'like', "%{$search}%")
+                    ->orWhere('work_scope', 'like', "%{$search}%")
+                    ->orWhere('spk_number', 'like', "%{$search}%")
+                    ->orWhere('mandor_phone', 'like', "%{$search}%");
+            });
+        }
+
+        if (! empty($statusFilter) && $statusFilter !== 'all') {
+            $boronganQuery->where('status', $statusFilter);
+        }
+
+        $borongans = $boronganQuery->with('panjars')->orderByDesc('contract_amount')->get();
+
+        $allProjectBorongans = MandorBorongan::where('project_id', $project->id)->get();
+        $totalContract = (float) $allProjectBorongans->sum('contract_amount');
+        $totalPanjar = (float) $allProjectBorongans->sum('panjar_amount');
+        $totalNet = max(0, $totalContract - $totalPanjar);
+        $totalPaid = (float) $allProjectBorongans->sum('paid_amount');
+        $totalRemaining = max(0, $totalContract - $totalPanjar - $totalPaid);
+
+        $boronganStats = [
+            'total_contracts' => $allProjectBorongans->count(),
+            'total_contract_amount' => $totalContract,
+            'total_panjar_amount' => $totalPanjar,
+            'total_net_contract_amount' => $totalNet,
+            'total_paid_amount' => $totalPaid,
+            'total_remaining_amount' => $totalRemaining,
+            'avg_progress' => $allProjectBorongans->count() > 0 ? round((float) $allProjectBorongans->avg('progress_percent'), 1) : 0,
+        ];
 
         // 1. Master Worker Query (Katalog Global)
         $masterQuery = Worker::withCount('projectWorkers');
@@ -109,6 +146,8 @@ class WorkerController extends Controller
             'search',
             'tradeFilter',
             'statusFilter',
+            'borongans',
+            'boronganStats',
             'masterWorkers',
             'projectWorkers',
             'catalog',
@@ -116,6 +155,136 @@ class WorkerController extends Controller
             'stats',
             'tradeOptions'
         ));
+    }
+
+    /**
+     * Simpan kontrak borongan (Lump Sum / LS) baru
+     */
+    public function storeBorongan(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'mandor_name' => 'required|string|max:255',
+            'mandor_phone' => 'nullable|string|max:50',
+            'work_scope' => 'required|string|max:255',
+            'spk_number' => 'nullable|string|max:100',
+            'contract_amount' => 'required|numeric|min:0',
+            'panjar_amount' => 'nullable|numeric|min:0',
+            'paid_amount' => 'nullable|numeric|min:0',
+            'progress_percent' => 'nullable|integer|min:0|max:100',
+            'status' => 'required|in:active,completed,hold',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $validated['panjar_amount'] = $validated['panjar_amount'] ?? 0;
+        $validated['paid_amount'] = $validated['paid_amount'] ?? 0;
+        $validated['progress_percent'] = $validated['progress_percent'] ?? 0;
+
+        $borongan = MandorBorongan::create($validated);
+
+        return redirect()->route('workers.index', ['project_id' => $validated['project_id'], 'tab' => 'borongan'])
+            ->with('success', "Kontrak Borongan LS '{$borongan->mandor_name}' ({$borongan->work_scope}) berhasil disimpan!");
+    }
+
+    /**
+     * Perbarui kontrak borongan (Lump Sum / LS)
+     */
+    public function updateBorongan(Request $request, MandorBorongan $borongan): RedirectResponse
+    {
+        $validated = $request->validate([
+            'mandor_name' => 'required|string|max:255',
+            'mandor_phone' => 'nullable|string|max:50',
+            'work_scope' => 'required|string|max:255',
+            'spk_number' => 'nullable|string|max:100',
+            'contract_amount' => 'required|numeric|min:0',
+            'panjar_amount' => 'nullable|numeric|min:0',
+            'paid_amount' => 'nullable|numeric|min:0',
+            'progress_percent' => 'nullable|integer|min:0|max:100',
+            'status' => 'required|in:active,completed,hold',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $validated['panjar_amount'] = $validated['panjar_amount'] ?? 0;
+        $validated['paid_amount'] = $validated['paid_amount'] ?? 0;
+        $validated['progress_percent'] = $validated['progress_percent'] ?? 0;
+
+        $borongan->update($validated);
+
+        return redirect()->route('workers.index', ['project_id' => $borongan->project_id, 'tab' => 'borongan'])
+            ->with('success', "Data borongan '{$borongan->mandor_name}' berhasil diperbarui!");
+    }
+
+    /**
+     * Simpan pemotongan panjar hasil kontrak mandor borongan
+     */
+    public function storePanjar(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'mandor_borongan_id' => 'required|exists:mandor_borongans,id',
+            'amount' => 'required|numeric|min:1',
+            'panjar_date' => 'required|date',
+            'reference_no' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $borongan = MandorBorongan::findOrFail($validated['mandor_borongan_id']);
+
+        $panjar = MandorBoronganPanjar::create([
+            'mandor_borongan_id' => $borongan->id,
+            'amount' => $validated['amount'],
+            'panjar_date' => $validated['panjar_date'],
+            'reference_no' => $validated['reference_no'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+            'created_by' => Auth::id(),
+        ]);
+
+        // Hitung ulang akumulasi panjar di mandor_borongans
+        $totalPanjar = (float) $borongan->panjars()->sum('amount');
+        $borongan->panjar_amount = $totalPanjar;
+        $borongan->save();
+
+        return redirect()->route('workers.index', ['project_id' => $borongan->project_id, 'tab' => 'borongan'])
+            ->with('success', 'Pemotongan panjar sebesar Rp '.number_format($panjar->amount, 0, ',', '.')." untuk Mandor '{$borongan->mandor_name}' berhasil dicatat!");
+    }
+
+    /**
+     * Hapus riwayat pemotongan panjar mandor
+     */
+    public function destroyPanjar(MandorBoronganPanjar $panjar): RedirectResponse
+    {
+        $borongan = $panjar->mandorBorongan;
+        $amount = (float) $panjar->amount;
+        $panjar->delete();
+
+        if ($borongan) {
+            $borongan->panjar_amount = (float) $borongan->panjars()->sum('amount');
+            $borongan->save();
+            $projectId = $borongan->project_id;
+            $mandorName = $borongan->mandor_name;
+        } else {
+            $projectId = session('active_project_id');
+            $mandorName = 'Mandor';
+        }
+
+        return redirect()->route('workers.index', ['project_id' => $projectId, 'tab' => 'borongan'])
+            ->with('success', 'Riwayat pemotongan panjar Rp '.number_format($amount, 0, ',', '.')." untuk {$mandorName} berhasil dihapus.");
+    }
+
+    /**
+     * Hapus kontrak borongan (Lump Sum / LS)
+     */
+    public function destroyBorongan(MandorBorongan $borongan): RedirectResponse
+    {
+        $projectId = $borongan->project_id;
+        $mandorName = $borongan->mandor_name;
+        $borongan->delete();
+
+        return redirect()->route('workers.index', ['project_id' => $projectId, 'tab' => 'borongan'])
+            ->with('success', "Data borongan '{$mandorName}' berhasil dihapus.");
     }
 
     /**

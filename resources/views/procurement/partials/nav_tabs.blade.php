@@ -16,6 +16,23 @@
         </a>
     @endif
 
+    <!-- 1.1 PO Menggantung (Outstanding / Belum Tuntas) -->
+    @if($user?->canReadPo() || $user?->canReadDo())
+        <a href="{{ route('procurement.outstanding-po', $query) }}" 
+           class="whitespace-nowrap px-3 sm:px-4 py-2 text-xs rounded-lg transition-all flex items-center gap-2 flex-shrink-0 {{ $active === 'outstanding_po' ? 'bg-white shadow-sm text-amber-800 font-bold' : 'text-slate-600 hover:text-slate-900 font-semibold hover:bg-slate-200/60' }}">
+            <svg class="w-4 h-4 {{ $active === 'outstanding_po' ? 'text-amber-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>PO Menggantung</span>
+            @php
+                $tabPendingCount = $pendingPoCount ?? ($activeProjectId ? \App\Models\PurchaseOrder::where('project_id', $activeProjectId)->where('status', '!=', 'cancelled')->get()->filter(fn($p) => $p->getFulfillmentDetails()['has_pending'])->count() : 0);
+            @endphp
+            @if($tabPendingCount > 0)
+                <span class="px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                    {{ $tabPendingCount }}
+                </span>
+            @endif
+        </a>
+    @endif
+
     <!-- 2. Penerimaan Barang -->
     @if($user?->canReadDo())
         <a href="{{ route('procurement.do.index', $query) }}" 
@@ -25,14 +42,6 @@
         </a>
     @endif
 
-    <!-- 3. Uang Muka Pembelian -->
-    @if($user?->canReadDownPayment())
-        <a href="{{ route('finance.down-payments.index', $query) }}" 
-           class="whitespace-nowrap px-3 sm:px-4 py-2 text-xs rounded-lg transition-all flex items-center gap-2 flex-shrink-0 {{ $active === 'down_payment' ? 'bg-white shadow-sm text-blue-700 font-bold' : 'text-slate-600 hover:text-slate-900 font-semibold hover:bg-slate-200/60' }}">
-            <svg class="w-4 h-4 {{ $active === 'down_payment' ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            <span>Uang Muka Pembelian</span>
-        </a>
-    @endif
 
     <!-- 4. Faktur Pembelian -->
     @if($user?->canReadInvoice())

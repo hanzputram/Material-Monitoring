@@ -409,6 +409,50 @@ class SampleProjectSeeder extends Seeder
             );
         }
 
+        // 4.1 Purchase Order Khusus: Operasional Kendaraan & Logistik Armada
+        $supPertamina = Supplier::updateOrCreate(
+            ['name' => 'PT Pertamina Patra Niaga & Logistik Armada'],
+            [
+                'contact_person' => 'Bambang Irawan',
+                'phone' => '0812-9876-5432',
+                'address' => 'Jl. Industri Pelabuhan No. 12, Terminal BBM & Logistik',
+            ]
+        );
+
+        $poOps = PurchaseOrder::updateOrCreate(
+            ['po_number' => 'PO/2026/OPS/001'],
+            [
+                'project_id' => $project->id,
+                'supplier_id' => $supPertamina->id,
+                'po_date' => Carbon::now()->subDays(5),
+                'notes' => 'Pesanan Pembelian Kuota BBM Solar, Pelumas Mesin, Sewa Dump Truck, dan Servis Operasional Armada Proyek.',
+                'status' => 'sent',
+                'created_by' => $purchasingUser?->id,
+            ]
+        );
+
+        $opsMaterialsData = [
+            ['code' => 'OPS-KND-001', 'qty' => 5000, 'price' => 15500],
+            ['code' => 'OPS-KND-002', 'qty' => 200,  'price' => 45000],
+            ['code' => 'OPS-KND-003', 'qty' => 50,   'price' => 1800000],
+            ['code' => 'OPS-KND-004', 'qty' => 10,   'price' => 850000],
+            ['code' => 'OPS-KND-005', 'qty' => 3,    'price' => 450000],
+        ];
+
+        foreach ($opsMaterialsData as $oData) {
+            $m = Material::where('code', $oData['code'])->first();
+            if ($m) {
+                PurchaseOrderItem::updateOrCreate(
+                    ['purchase_order_id' => $poOps->id, 'material_id' => $m->id],
+                    [
+                        'qty_ordered' => $oData['qty'],
+                        'unit_id' => $m->default_unit_id,
+                        'unit_price' => $oData['price'],
+                    ]
+                );
+            }
+        }
+
         // Trigger Realization and Variance calculation
         MaterialRealization::recalculateAllForProject($project->id);
 

@@ -9,6 +9,7 @@ use App\Models\Material;
 use App\Models\MaterialRealization;
 use App\Models\MaterialVarianceValidation;
 use App\Models\Project;
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\RabItemMaterial;
 use Illuminate\Http\Request;
@@ -90,21 +91,54 @@ class DashboardController extends Controller
                 'sections' => [],
             ];
 
-            foreach ($root->children as $sub) {
-                // Direct materials under sub-category
-                $subDirectMats = [];
-                foreach ($sub->rabItems as $item) {
-                    foreach ($item->materials as $im) {
-                        if (! isset($subDirectMats[$im->material_id])) {
-                            $rel = $realizations->firstWhere('material_id', $im->material_id);
+            // 6.a. Direct materials & items under Root Category (Level 1)
+            $rootDirectMats = [];
+            foreach ($root->rabItems as $item) {
+                foreach ($item->materials as $im) {
+                    $itemMats = collect([$im])->merge($im->breakdowns);
+                    foreach ($itemMats as $m) {
+                        if (! isset($rootDirectMats[$m->material_id])) {
+                            $rel = $realizations->firstWhere('material_id', $m->material_id);
                             if ($rel) {
                                 $rel->rab_category_name = $root->name;
                                 $rel->rab_category_code = $root->code;
                                 $rel->rab_category_full = $root->code.'. '.$root->name;
-                                $rel->rab_section_title = $sub->code.' '.$sub->name;
-                                $rel->rab_section_subtitle = null;
-                                $subDirectMats[$im->material_id] = $rel;
-                                $allMappedMaterialIds[] = $im->material_id;
+                                $rel->rab_section_title = $root->code.' '.$root->name;
+                                $rel->rab_section_subtitle = $item->name;
+                                $rootDirectMats[$m->material_id] = $rel;
+                            }
+                            $allMappedMaterialIds[] = $m->material_id;
+                        }
+                    }
+                }
+            }
+
+            if (! empty($rootDirectMats)) {
+                $categoryGroup['sections'][] = [
+                    'title' => $root->code.' '.$root->name,
+                    'subtitle' => null,
+                    'materials' => array_values($rootDirectMats),
+                ];
+            }
+
+            // 6.b. Materials under Sub-Categories (Level 2)
+            foreach ($root->children as $sub) {
+                $subDirectMats = [];
+                foreach ($sub->rabItems as $item) {
+                    foreach ($item->materials as $im) {
+                        $itemMats = collect([$im])->merge($im->breakdowns);
+                        foreach ($itemMats as $m) {
+                            if (! isset($subDirectMats[$m->material_id])) {
+                                $rel = $realizations->firstWhere('material_id', $m->material_id);
+                                if ($rel) {
+                                    $rel->rab_category_name = $root->name;
+                                    $rel->rab_category_code = $root->code;
+                                    $rel->rab_category_full = $root->code.'. '.$root->name;
+                                    $rel->rab_section_title = $sub->code.' '.$sub->name;
+                                    $rel->rab_section_subtitle = $item->name;
+                                    $subDirectMats[$m->material_id] = $rel;
+                                }
+                                $allMappedMaterialIds[] = $m->material_id;
                             }
                         }
                     }
@@ -118,21 +152,24 @@ class DashboardController extends Controller
                     ];
                 }
 
-                // Materials under sub-sub-categories
+                // 6.c. Materials under Sub-Sub-Categories (Level 3)
                 foreach ($sub->children as $subSub) {
                     $subSubMats = [];
                     foreach ($subSub->rabItems as $item) {
                         foreach ($item->materials as $im) {
-                            if (! isset($subSubMats[$im->material_id])) {
-                                $rel = $realizations->firstWhere('material_id', $im->material_id);
-                                if ($rel) {
-                                    $rel->rab_category_name = $root->name;
-                                    $rel->rab_category_code = $root->code;
-                                    $rel->rab_category_full = $root->code.'. '.$root->name;
-                                    $rel->rab_section_title = $sub->code.' '.$sub->name;
-                                    $rel->rab_section_subtitle = $subSub->code.' '.$subSub->name;
-                                    $subSubMats[$im->material_id] = $rel;
-                                    $allMappedMaterialIds[] = $im->material_id;
+                            $itemMats = collect([$im])->merge($im->breakdowns);
+                            foreach ($itemMats as $m) {
+                                if (! isset($subSubMats[$m->material_id])) {
+                                    $rel = $realizations->firstWhere('material_id', $m->material_id);
+                                    if ($rel) {
+                                        $rel->rab_category_name = $root->name;
+                                        $rel->rab_category_code = $root->code;
+                                        $rel->rab_category_full = $root->code.'. '.$root->name;
+                                        $rel->rab_section_title = $sub->code.' '.$sub->name;
+                                        $rel->rab_section_subtitle = $subSub->code.' '.$subSub->name;
+                                        $subSubMats[$m->material_id] = $rel;
+                                    }
+                                    $allMappedMaterialIds[] = $m->material_id;
                                 }
                             }
                         }
@@ -153,12 +190,44 @@ class DashboardController extends Controller
             }
         }
 
+        // Comprehensive query: Seluruh material yang terdaftar dalam RAB proyek ini (termasuk leaf dan breakdown)
+        $dbRabMaterialIds = RabItemMaterial::whereHas('rabItem.rabNode', function ($query) use ($currentProject) {
+            $query->where('project_id', $currentProject->id);
+        })->pluck('material_id')->toArray();
+
+        $allMappedMaterialIds = array_values(array_unique(array_merge($allMappedMaterialIds, $dbRabMaterialIds)));
+
+        // Lengkapi data kategori untuk realization yang ada dalam RAB proyek
+        foreach ($realizations as $rel) {
+            if (empty($rel->rab_category_name) && in_array($rel->material_id, $allMappedMaterialIds)) {
+                $rim = RabItemMaterial::with(['rabItem.rabNode'])
+                    ->whereHas('rabItem.rabNode', fn ($q) => $q->where('project_id', $currentProject->id))
+                    ->where('material_id', $rel->material_id)
+                    ->first();
+                if ($rim && $rim->rabItem && $rim->rabItem->rabNode) {
+                    $node = $rim->rabItem->rabNode;
+                    $curr = $node;
+                    while ($curr->parent) {
+                        $curr = $curr->parent;
+                    }
+                    $rootNode = $curr;
+                    $rel->rab_category_name = $rootNode->name;
+                    $rel->rab_category_code = $rootNode->code;
+                    $rel->rab_category_full = $rootNode->code.'. '.$rootNode->name;
+                    $rel->rab_section_title = $node->code.' '.$node->name;
+                    $rel->rab_section_subtitle = $rim->rabItem->name;
+                }
+            }
+        }
+
         // 7. Non-RAB Purchases Recap (Pembelian & Pengadaan di Luar RAB / Unbudgeted)
         // Pengawasan material yang dipesan / diterima tetapi TIDAK ADA di struktur alokasi RAB Tree proyek
+        // Catatan: Item khusus operasional kendaraan dipisahkan ke modul pemantauan armada tersendiri
         $nonRabPoItems = PurchaseOrderItem::whereHas('purchaseOrder', function ($q) use ($currentProject) {
             $q->where('project_id', $currentProject->id);
         })
             ->whereNotIn('material_id', $allMappedMaterialIds)
+            ->whereDoesntHave('material', fn ($q) => $q->where('category', 'operasional_kendaraan'))
             ->with(['material.defaultUnit', 'purchaseOrder.supplier', 'unit'])
             ->get();
 
@@ -166,16 +235,15 @@ class DashboardController extends Controller
             $q->where('project_id', $currentProject->id);
         })
             ->whereNotIn('material_id', $allMappedMaterialIds)
+            ->whereDoesntHave('material', fn ($q) => $q->where('category', 'operasional_kendaraan'))
             ->with(['material.defaultUnit', 'deliveryOrder.supplier', 'deliveryOrder.receiver', 'unit'])
             ->get();
 
-        $nonRabRealizations = $realizations->whereNotIn('material_id', $allMappedMaterialIds);
-
-        $allNonRabMaterialIds = array_unique(array_merge(
+        // Material Non-RAB HANYA yang benar-benar memiliki riwayat pengadaan fisik/PO (po_qty > 0 atau do_qty > 0)
+        $allNonRabMaterialIds = array_values(array_unique(array_merge(
             $nonRabPoItems->pluck('material_id')->toArray(),
-            $nonRabDoItems->pluck('material_id')->toArray(),
-            $nonRabRealizations->pluck('material_id')->toArray()
-        ));
+            $nonRabDoItems->pluck('material_id')->toArray()
+        )));
 
         $nonRabPurchases = [];
         $totalNonRabPoCost = 0;
@@ -184,7 +252,16 @@ class DashboardController extends Controller
         foreach ($allNonRabMaterialIds as $matId) {
             $mPoItems = $nonRabPoItems->where('material_id', $matId);
             $mDoItems = $nonRabDoItems->where('material_id', $matId);
-            $mRealization = $nonRabRealizations->firstWhere('material_id', $matId);
+            $mRealization = $realizations->firstWhere('material_id', $matId);
+
+            $poQty = (float) $mPoItems->sum('qty_ordered');
+            $poCost = (float) $mPoItems->sum(fn ($it) => (float) $it->qty_ordered * (float) $it->unit_price);
+            $doQty = (float) $mDoItems->sum('qty_received');
+
+            // Skip item jika tidak ada kuantiti PO dan tidak ada kuantiti DO (tidak ada aktivitas pembelian)
+            if ($poQty <= 0 && $doQty <= 0) {
+                continue;
+            }
 
             $mat = $mPoItems->first()?->material
                 ?? $mDoItems->first()?->material
@@ -194,10 +271,6 @@ class DashboardController extends Controller
             if (! $mat) {
                 continue;
             }
-
-            $poQty = (float) $mPoItems->sum('qty_ordered');
-            $poCost = (float) $mPoItems->sum(fn ($it) => (float) $it->qty_ordered * (float) $it->unit_price);
-            $doQty = (float) $mDoItems->sum('qty_received');
 
             $totalNonRabPoCost += $poCost;
             $totalNonRabDoQty += $doQty;
@@ -219,10 +292,12 @@ class DashboardController extends Controller
                 $statusType = 'pending';
                 $statusLabel = 'Menunggu Kirim (PO Sent)';
                 $badgeCls = 'bg-amber-100 text-amber-800 border-amber-200';
-            } else {
+            } elseif ($doQty > 0 && $poQty == 0) {
                 $statusType = 'unplanned_do';
                 $statusLabel = 'Fisik Tiba Tanpa PO';
                 $badgeCls = 'bg-purple-100 text-purple-800 border-purple-200';
+            } else {
+                continue;
             }
 
             $nonRabPurchases[] = [
@@ -251,6 +326,70 @@ class DashboardController extends Controller
         $stats['non_rab_do_count'] = $nonRabDoItems->pluck('delivery_order_id')->unique()->count();
         $stats['non_rab_do_received_qty'] = $totalNonRabDoQty;
 
+        // 8. Monitoring Khusus: Operasional Kendaraan & Logistik Armada
+        // Pemantauan konsumsi BBM Solar, pelumas mesin, servis berkala, dan sewa dump truck armada lapangan
+        $vehicleOpsMaterials = Material::where('category', 'operasional_kendaraan')
+            ->with('defaultUnit')
+            ->orderBy('code')
+            ->get()
+            ->map(function ($mat) use ($currentProject) {
+                $poItems = PurchaseOrderItem::where('material_id', $mat->id)
+                    ->whereHas('purchaseOrder', function ($q) use ($currentProject) {
+                        $q->where('project_id', $currentProject->id);
+                    })
+                    ->with(['purchaseOrder.supplier', 'unit'])
+                    ->get();
+
+                $poQty = (float) $poItems->sum('qty_ordered');
+                $poCost = (float) $poItems->sum(fn ($it) => (float) $it->qty_ordered * (float) $it->unit_price);
+
+                $doItems = DeliveryOrderItem::where('material_id', $mat->id)
+                    ->whereHas('deliveryOrder', function ($q) use ($currentProject) {
+                        $q->where('project_id', $currentProject->id);
+                    })
+                    ->with(['deliveryOrder.supplier', 'unit'])
+                    ->get();
+
+                $doQty = (float) $doItems->sum('qty_received');
+
+                // Sesuai requirement: Kuota 'Akan Diambil' disamakan dengan kuota 'PO'
+                $akanDiambilQty = $poQty;
+                $sisaDiambilQty = max(0, $akanDiambilQty - $doQty);
+                $pctTaken = $akanDiambilQty > 0 ? round(($doQty / $akanDiambilQty) * 100, 1) : 0;
+
+                $mat->po_qty = $poQty;
+                $mat->po_cost = $poCost;
+                $mat->akan_diambil_qty = $akanDiambilQty;
+                $mat->do_qty = $doQty;
+                $mat->sisa_diambil_qty = $sisaDiambilQty;
+                $mat->pct_taken = $pctTaken;
+                $mat->pos = $poItems->map(fn ($it) => $it->purchaseOrder)->filter()->unique('id')->values();
+                $mat->dos = $doItems->map(fn ($it) => $it->deliveryOrder)->filter()->unique('id')->values();
+
+                $mat->realization = MaterialRealization::where('project_id', $currentProject->id)
+                    ->where('material_id', $mat->id)
+                    ->first();
+
+                return $mat;
+            });
+
+        // 9. PO Menggantung / Belum Diterima Sepenuhnya di Lapangan
+        $pendingPos = PurchaseOrder::where('project_id', $currentProject->id)
+            ->where('status', '!=', 'cancelled')
+            ->with(['supplier', 'creator', 'items.material.defaultUnit', 'deliveryOrders'])
+            ->get()
+            ->map(function ($po) {
+                $po->fulfillment = $po->getFulfillmentDetails();
+
+                return $po;
+            })
+            ->filter(fn ($po) => $po->fulfillment['has_pending'])
+            ->values();
+
+        $stats['pending_pos_count'] = $pendingPos->count();
+        $stats['pending_pos_partial_count'] = $pendingPos->where('fulfillment.is_partial', true)->count();
+        $stats['pending_pos_needs_do'] = $pendingPos->where('fulfillment.needs_new_do_number', true)->count();
+
         return view('dashboard.index', compact(
             'projects',
             'currentProject',
@@ -258,11 +397,13 @@ class DashboardController extends Controller
             'realizations',
             'treeRealizations',
             'nonRabPurchases',
+            'vehicleOpsMaterials',
             'chartCategories',
             'chartBudgets',
             'chartActuals',
             'recentAlerts',
-            'recentDos'
+            'recentDos',
+            'pendingPos'
         ));
     }
 
@@ -338,8 +479,42 @@ class DashboardController extends Controller
     public function switchProject(Request $request)
     {
         $request->validate(['project_id' => 'required|exists:projects,id']);
-        session(['active_project_id' => $request->project_id]);
+        $newProjectId = (int) $request->project_id;
+        session(['active_project_id' => $newProjectId]);
 
-        return redirect()->back();
+        $previousUrl = url()->previous();
+
+        if ($previousUrl) {
+            $parsedUrl = parse_url($previousUrl);
+
+            // 1. If previous URL was viewing/editing a specific project resource (e.g. /projects/2 or /projects/2/edit)
+            if (isset($parsedUrl['path']) && preg_match('#^/projects/\d+(/edit)?$#', $parsedUrl['path'], $matches)) {
+                $suffix = $matches[1] ?? '';
+                $newPath = '/projects/'.$newProjectId.$suffix;
+                $newUrl = ($parsedUrl['scheme'] ?? 'http').'://'.($parsedUrl['host'] ?? 'localhost')
+                    .(isset($parsedUrl['port']) ? ':'.$parsedUrl['port'] : '')
+                    .$newPath;
+
+                return redirect($newUrl)->with('success', 'Proyek berhasil dialihkan.');
+            }
+
+            // 2. If previous URL contains a project_id query parameter, update it to the new project ID
+            if (isset($parsedUrl['query'])) {
+                parse_str($parsedUrl['query'], $queryParams);
+                if (isset($queryParams['project_id'])) {
+                    $queryParams['project_id'] = $newProjectId;
+                    $newQuery = http_build_query($queryParams);
+                    $newUrl = ($parsedUrl['scheme'] ?? 'http').'://'.($parsedUrl['host'] ?? 'localhost')
+                        .(isset($parsedUrl['port']) ? ':'.$parsedUrl['port'] : '')
+                        .($parsedUrl['path'] ?? '/')
+                        .($newQuery ? '?'.$newQuery : '')
+                        .(isset($parsedUrl['fragment']) ? '#'.$parsedUrl['fragment'] : '');
+
+                    return redirect($newUrl)->with('success', 'Proyek berhasil dialihkan.');
+                }
+            }
+        }
+
+        return redirect()->back()->with('success', 'Proyek berhasil dialihkan.');
     }
 }

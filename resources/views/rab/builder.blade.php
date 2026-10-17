@@ -7,13 +7,19 @@
 @section('content')
 <div class="space-y-6" x-data="{
     showNodeModal: false,
+    showEditNodeModal: false,
     showItemModal: false,
+    showEditItemModal: false,
     showBomModal: false,
+    showEditBomModal: false,
     showCloneBomModal: false,
     showBreakdownModal: false,
     nodeModal: { parent_id: null, level: 1, levelName: 'Kategori Utama (Level 1)' },
+    editNodeModal: { id: null, code: '', name: '', levelName: '', action: '' },
     itemModal: { rab_node_id: null, nodeName: '' },
+    editItemModal: { id: null, item_no: '', name: '', volume: 1, unit_id: null, unit_price: 0, action: '' },
     bomModal: { rab_item_id: null, itemName: '', defaultUnitId: null },
+    editBomModal: { id: null, material_id: null, volume: 1, unit_id: null, unit_price: 0, notes: '', title: '', action: '' },
     cloneModal: { target_item_id: null, itemName: '' },
     breakdownModal: { material_id: null, parentName: '', parentCode: '', parentUnit: '', parentVolume: '' }
 }">
@@ -88,10 +94,16 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 <span class="hidden sm:inline">Item</span>
                             </button>
+                            <!-- Edit Kategori Level 1 -->
+                            <button type="button" @click="editNodeModal = { id: {{ $l1->id }}, code: '{{ addslashes($l1->code) }}', name: '{{ addslashes($l1->name) }}', levelName: 'Kategori Utama (Level 1)', action: '{{ route('rab.nodes.update', $l1->id) }}' }; showEditNodeModal = true"
+                                    class="p-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-100/50 rounded-lg flex items-center gap-1 transition-colors" title="Edit Kategori">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                <span class="hidden sm:inline">Edit</span>
+                            </button>
                             <form action="{{ route('rab.nodes.destroy', $l1->id) }}" method="POST" onsubmit="return confirm('Hapus kategori {{ $l1->name }} beserta seluruh isinya?')" class="inline">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg" title="Hapus Kategori">
+                                <button type="submit" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors" title="Hapus Kategori">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </form>
@@ -130,10 +142,16 @@
                                                 class="px-2 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-50 rounded">
                                             + Item
                                         </button>
+                                        <!-- Edit Sub Kategori Level 2 -->
+                                        <button type="button" @click="editNodeModal = { id: {{ $l2->id }}, code: '{{ addslashes($l2->code) }}', name: '{{ addslashes($l2->name) }}', levelName: 'Sub Kategori (Level 2)', action: '{{ route('rab.nodes.update', $l2->id) }}' }; showEditNodeModal = true" 
+                                                class="px-2 py-1 text-[11px] font-semibold text-amber-600 hover:bg-amber-50 rounded flex items-center gap-0.5 transition-colors" title="Edit Sub Kategori">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            <span>Edit</span>
+                                        </button>
                                         <form action="{{ route('rab.nodes.destroy', $l2->id) }}" method="POST" onsubmit="return confirm('Hapus sub kategori ini?')" class="inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="p-1 text-slate-400 hover:text-rose-600 rounded">
+                                            <button type="submit" class="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors" title="Hapus Sub Kategori">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             </button>
                                         </form>
@@ -165,10 +183,16 @@
                                                             class="px-2 py-0.5 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-50 rounded">
                                                         + Item
                                                     </button>
+                                                    <!-- Edit Sub-Sub Kategori Level 3 -->
+                                                    <button type="button" @click="editNodeModal = { id: {{ $l3->id }}, code: '{{ addslashes($l3->code) }}', name: '{{ addslashes($l3->name) }}', levelName: 'Sub-Sub Kategori (Level 3)', action: '{{ route('rab.nodes.update', $l3->id) }}' }; showEditNodeModal = true" 
+                                                            class="px-2 py-0.5 text-[11px] font-semibold text-amber-600 hover:bg-amber-50 rounded flex items-center gap-0.5 transition-colors" title="Edit Sub-Sub Kategori">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                        <span>Edit</span>
+                                                    </button>
                                                     <form action="{{ route('rab.nodes.destroy', $l3->id) }}" method="POST" onsubmit="return confirm('Hapus sub-sub kategori ini?')" class="inline">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="submit" class="p-1 text-slate-400 hover:text-rose-600 rounded">
+                                                        <button type="submit" class="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors" title="Hapus Sub-Sub Kategori">
                                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                         </button>
                                                     </form>
@@ -516,6 +540,207 @@
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="button" @click="showBreakdownModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
                         <button type="submit" class="px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm">Simpan Rincian Breakdown</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT NODE (KATEGORI / SUB / SUB-SUB) -->
+    <div x-show="showEditNodeModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showEditNodeModal = false" aria-hidden="true"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
+            <div class="relative w-full max-w-md p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                 @click.stop>
+                <form :action="editNodeModal.action" method="POST">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <div>
+                            <span class="badge-clean bg-amber-100 text-amber-800 text-[10px] mb-1">Perbarui Kategori</span>
+                            <h3 class="text-sm font-bold text-slate-900" x-text="'Edit ' + editNodeModal.levelName"></h3>
+                        </div>
+                        <button type="button" @click="showEditNodeModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+                    </div>
+
+                    <div class="space-y-4 text-xs">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Kode Kategori</label>
+                            <input type="text" name="code" x-model="editNodeModal.code" placeholder="Mis. I, I.A, A.1" 
+                                   class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono">
+                            <span class="text-[10px] text-slate-400 mt-1 block">Kode penomoran kategori RAB.</span>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Uraian / Nama Kategori <span class="text-rose-500">*</span></label>
+                            <input type="text" name="name" x-model="editNodeModal.name" required placeholder="Mis. PEKERJAAN STRUKTUR LANTAI 1" 
+                                   class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold">
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" @click="showEditNodeModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-sm flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Simpan Perubahan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT ITEM PEKERJAAN (LEVEL 4) -->
+    <div x-show="showEditItemModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showEditItemModal = false" aria-hidden="true"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
+            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                 @click.stop>
+                <form :action="editItemModal.action" method="POST">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <div>
+                            <span class="badge-clean bg-blue-100 text-blue-800 text-[10px] mb-1">Edit Item Pekerjaan (Level 4)</span>
+                            <h3 class="text-sm font-bold text-slate-900" x-text="'Edit: ' + editItemModal.name"></h3>
+                        </div>
+                        <button type="button" @click="showEditItemModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+                    </div>
+
+                    <div class="space-y-4 text-xs">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div class="col-span-1">
+                                <label class="block font-semibold text-slate-700 mb-1">No. Item</label>
+                                <input type="text" name="item_no" x-model="editItemModal.item_no" placeholder="1.0" 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono font-bold">
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label class="block font-semibold text-slate-700 mb-1">Uraian Pekerjaan <span class="text-rose-500">*</span></label>
+                                <input type="text" name="name" x-model="editItemModal.name" required placeholder="Mis. Pemasangan Keramik 25x20" 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="font-semibold text-slate-700">Volume <span class="text-rose-500">*</span></label>
+                                    <button type="button" @click="$dispatch('open-calc')" class="text-[10px] text-blue-600 font-bold hover:underline">Kalkulator</button>
+                                </div>
+                                <input type="number" step="any" name="volume" x-model.number="editItemModal.volume" required 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Satuan <span class="text-rose-500">*</span></label>
+                                <select name="unit_id" x-model="editItemModal.unit_id" required class="w-full select-clean p-2.5 bg-white text-slate-800">
+                                    @foreach($units as $u)
+                                        <option value="{{ $u->id }}">{{ $u->code == $u->name ? $u->code : $u->name . ' (' . $u->code . ')' }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Harga Satuan (Rp) <span class="text-rose-500">*</span></label>
+                                <input type="number" step="any" name="unit_price" x-model.number="editItemModal.unit_price" required 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Computed Preview -->
+                        <div class="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between">
+                            <span class="text-xs font-semibold text-blue-700">Estimasi Jumlah Harga Baru:</span>
+                            <span class="text-sm font-extrabold font-mono text-blue-900" x-text="'Rp ' + new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((editItemModal.volume || 0) * (editItemModal.unit_price || 0))"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" @click="showEditItemModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Perbarui Item Pekerjaan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT BOM / MATERIAL BREAKDOWN -->
+    <div x-show="showEditBomModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showEditBomModal = false" aria-hidden="true"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
+            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                 @click.stop>
+                <form :action="editBomModal.action" method="POST">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <div>
+                            <span class="badge-clean bg-purple-100 text-purple-800 text-[10px] mb-1" x-text="editBomModal.title || 'Edit Material BOM'"></span>
+                            <h3 class="text-sm font-bold text-slate-900">Perbarui Data Material Breakdown</h3>
+                        </div>
+                        <button type="button" @click="showEditBomModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+                    </div>
+
+                    <div class="space-y-4 text-xs">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Pilih Material Dasar (Katalog) <span class="text-rose-500">*</span></label>
+                            <select name="material_id" x-model="editBomModal.material_id" required 
+                                    @change="
+                                        let opt = $event.target.selectedOptions[0];
+                                        if (opt && opt.getAttribute('data-price')) {
+                                            editBomModal.unit_price = parseFloat(opt.getAttribute('data-price')) || editBomModal.unit_price;
+                                        }
+                                    "
+                                    class="w-full select-clean p-2.5 bg-white text-slate-800">
+                                @foreach($materials as $m)
+                                    <option value="{{ $m->id }}" data-price="{{ (float)$m->standard_price }}">
+                                        {{ $m->name }} ({{ $m->code }})@if($m->standard_price > 0) — Ref: Rp {{ number_format($m->standard_price, 0, ',', '.') }}/{{ $m->defaultUnit?->code }}@endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Volume Kebutuhan <span class="text-rose-500">*</span></label>
+                                <input type="number" step="any" name="volume" x-model.number="editBomModal.volume" required 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Satuan <span class="text-rose-500">*</span></label>
+                                <select name="unit_id" x-model="editBomModal.unit_id" required class="w-full select-clean p-2.5 bg-white text-slate-800">
+                                    @foreach($units as $u)
+                                        <option value="{{ $u->id }}">{{ $u->code }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Harga Satuan (Rp) <span class="text-rose-500">*</span></label>
+                                <input type="number" step="any" name="unit_price" x-model.number="editBomModal.unit_price" required 
+                                       class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Catatan / Spesifikasi Khusus (Opsional)</label>
+                            <input type="text" name="notes" x-model="editBomModal.notes" placeholder="Mis. Spesifikasi khusus atau petunjuk pengadaan" 
+                                   class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                        </div>
+
+                        <div class="p-3 bg-purple-50 border border-purple-100 rounded-xl flex items-center justify-between">
+                            <span class="text-xs font-semibold text-purple-800">Estimasi Subtotal Material Baru:</span>
+                            <span class="text-sm font-extrabold font-mono text-purple-900" x-text="'Rp ' + new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((editBomModal.volume || 0) * (editBomModal.unit_price || 0))"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" @click="showEditBomModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Simpan Perubahan Material</span>
+                        </button>
                     </div>
                 </form>
             </div>

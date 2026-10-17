@@ -2,12 +2,21 @@
 
 @section('title', 'Faktur Pembelian (Invoice) — ' . $project->name)
 @section('page_title', 'Faktur Pembelian (Invoice)')
-@section('page_subtitle', 'Verifikasi berkas tagihan supplier, nominal faktur, potongan uang muka, dan validasi pelunasan')
+@section('page_subtitle', 'Verifikasi berkas tagihan supplier, nominal faktur, dan validasi pelunasan hutang')
 
 @section('content')
-<div class="space-y-6" x-data="{
+<div class="space-y-6" x-data="Object.assign(tableColumnHandler('invoices_table', [
+    { key: 'inv_number', label: 'No. Faktur', visible: true },
+    { key: 'dates', label: 'Tanggal & Jatuh Tempo', visible: true },
+    { key: 'supplier', label: 'Toko / Supplier', visible: true },
+    { key: 'po_ref', label: 'Ref PO', visible: true },
+    { key: 'net_amount', label: 'Nilai Tagihan Net', visible: true },
+    { key: 'payment_status', label: 'Status Bayar', visible: true },
+    { key: 'attachment', label: 'Bukti Faktur', visible: true },
+    { key: 'action', label: 'Aksi', visible: true }
+]), {
     showInvModal: false
-}">
+})">
 
     <!-- Sub-Navigasi Modul 6 Tab & Quick Action -->
     <div class="card-clean p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
@@ -31,23 +40,15 @@
 
     <!-- SUMMARY METRICS -->
     @php
-        $totalTagihanGross = $invoices->sum('amount');
-        $totalDpPotongan = $invoices->sum('down_payment_amount');
-        $totalTagihanNet = $invoices->sum(fn($i) => $i->net_amount);
+        $totalTagihanNet = $invoices->sum(fn($i) => $i->net_amount ?: $i->amount);
         $totalPaid = $invoices->sum('paid_amount');
         $totalSisaHutang = max(0, $totalTagihanNet - $totalPaid);
     @endphp
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="card-clean p-4 border-l-4 border-l-purple-500">
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Faktur</span>
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Faktur Diterima</span>
             <span class="text-xl font-extrabold text-slate-900 font-mono mt-1 block">{{ $invoices->count() }} Dokumen</span>
-            <div class="text-[11px] text-slate-500 mt-1">Bruto: Rp {{ number_format($totalTagihanGross, 0, ',', '.') }}</div>
-        </div>
-
-        <div class="card-clean p-4 border-l-4 border-l-indigo-500">
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Potongan Uang Muka (DP)</span>
-            <span class="text-xl font-extrabold text-indigo-700 font-mono mt-1 block">Rp {{ number_format($totalDpPotongan, 0, ',', '.') }}</span>
-            <div class="text-[11px] text-slate-500 mt-1">Mengurangi kewajiban faktur</div>
+            <div class="text-[11px] text-slate-500 mt-1">Tagihan resmi rekanan proyek</div>
         </div>
 
         <div class="card-clean p-4 border-l-4 border-l-blue-500">
@@ -75,43 +76,42 @@
                 <p class="text-xs text-slate-500">Berkas tagihan resmi supplier dengan pelacakan potongan DP dan status pembayaran</p>
             </div>
             <div class="flex items-center gap-2">
-                <span class="badge-clean bg-purple-50 text-purple-700 border border-purple-200 text-xs">Wajib Lampiran Faktur</span>
+                <span class="badge-clean bg-purple-50 text-purple-700 border border-purple-200 text-xs">Total: {{ $invoices->count() }} Faktur</span>
+                <x-table-column-toggle storageKey="invoices_table" />
             </div>
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs table-clean min-w-[1050px]">
+            <table class="w-full text-left text-xs table-clean min-w-[950px]">
                 <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                     <tr>
-                        <th class="py-3 px-4 w-[160px]">No. Faktur</th>
-                        <th class="py-3 px-4 w-[140px]">Tanggal &amp; Jatuh Tempo</th>
-                        <th class="py-3 px-4 w-[200px]">Toko / Supplier</th>
-                        <th class="py-3 px-4 w-[130px]">Ref PO</th>
-                        <th class="py-3 px-4 text-right w-[140px]">Nilai Bruto</th>
-                        <th class="py-3 px-4 text-right w-[130px]">Potongan DP</th>
-                        <th class="py-3 px-4 text-right w-[140px]">Net Tagihan</th>
-                        <th class="py-3 px-4 text-center w-[130px]">Status Bayar</th>
-                        <th class="py-3 px-4 text-center w-[120px]">Bukti Faktur</th>
-                        <th class="py-3 px-4 text-right w-[70px]">Aksi</th>
+                        <th x-show="isColVisible('inv_number')" class="py-3 px-4 w-[160px]">No. Faktur</th>
+                        <th x-show="isColVisible('dates')" class="py-3 px-4 w-[140px]">Tanggal &amp; Jatuh Tempo</th>
+                        <th x-show="isColVisible('supplier')" class="py-3 px-4 w-[200px]">Toko / Supplier</th>
+                        <th x-show="isColVisible('po_ref')" class="py-3 px-4 w-[130px]">Ref PO</th>
+                        <th x-show="isColVisible('net_amount')" class="py-3 px-4 text-right w-[150px]">Net Tagihan</th>
+                        <th x-show="isColVisible('payment_status')" class="py-3 px-4 text-center w-[130px]">Status Bayar</th>
+                        <th x-show="isColVisible('attachment')" class="py-3 px-4 text-center w-[120px]">Bukti Faktur</th>
+                        <th x-show="isColVisible('action')" class="py-3 px-4 text-right w-[70px]">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($invoices as $inv)
                         <tr class="hover:bg-slate-50/60 transition-colors">
-                            <td class="py-3 px-4 whitespace-nowrap">
+                            <td x-show="isColVisible('inv_number')" class="py-3 px-4 whitespace-nowrap">
                                 <div class="font-bold font-mono text-purple-700">{{ $inv->invoice_number }}</div>
                                 @if($inv->validator)
                                     <span class="text-[10px] text-slate-400">Validator: {{ $inv->validator->name }}</span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 text-slate-600 whitespace-nowrap">
+                            <td x-show="isColVisible('dates')" class="py-3 px-4 text-slate-600 whitespace-nowrap">
                                 <div class="font-medium">{{ \Carbon\Carbon::parse($inv->invoice_date)->format('d/m/Y') }}</div>
                                 @if($inv->due_date)
                                     <span class="text-[10px] text-slate-400 block">Jatuh Tempo: {{ \Carbon\Carbon::parse($inv->due_date)->format('d/m/Y') }}</span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">{{ $inv->supplier?->name ?? 'Vendor' }}</td>
-                            <td class="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
+                            <td x-show="isColVisible('supplier')" class="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">{{ $inv->supplier?->name ?? 'Vendor' }}</td>
+                            <td x-show="isColVisible('po_ref')" class="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
                                 @if($inv->purchaseOrder)
                                     <span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-blue-50 text-blue-700 rounded border border-blue-200">
                                         {{ $inv->purchaseOrder->po_number }}
@@ -120,20 +120,10 @@
                                     <span class="text-slate-400 italic">Tanpa PO</span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 font-mono font-medium text-slate-600 text-right whitespace-nowrap">
-                                Rp {{ number_format($inv->amount, 0, ',', '.') }}
+                            <td x-show="isColVisible('net_amount')" class="py-3 px-4 font-mono font-extrabold text-slate-900 text-right whitespace-nowrap">
+                                Rp {{ number_format($inv->net_amount ?: $inv->amount, 0, ',', '.') }}
                             </td>
-                            <td class="py-3 px-4 font-mono font-medium text-indigo-700 text-right whitespace-nowrap">
-                                @if($inv->down_payment_amount > 0)
-                                    -Rp {{ number_format($inv->down_payment_amount, 0, ',', '.') }}
-                                @else
-                                    -
-                                @endif
-                            </td>
-                            <td class="py-3 px-4 font-mono font-extrabold text-slate-900 text-right whitespace-nowrap">
-                                Rp {{ number_format($inv->net_amount, 0, ',', '.') }}
-                            </td>
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
+                            <td x-show="isColVisible('payment_status')" class="py-3 px-4 text-center whitespace-nowrap">
                                 @if($inv->payment_status === 'paid')
                                     <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
                                         <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -149,7 +139,7 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 text-center">
+                            <td x-show="isColVisible('attachment')" class="py-3 px-4 text-center">
                                 @if($inv->attachment_path)
                                     <a href="{{ route('storage.fallback', $inv->attachment_path) }}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
@@ -159,7 +149,7 @@
                                     <span class="text-slate-400 italic text-[11px]">Tanpa lampiran</span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 text-right">
+                            <td x-show="isColVisible('action')" class="py-3 px-4 text-right">
                                 @if(auth()->user()?->canWriteInvoice() && $inv->paid_amount == 0)
                                     <form action="{{ route('procurement.invoices.destroy', $inv->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus Faktur {{ $inv->invoice_number }}?');" class="inline">
                                         @csrf
@@ -248,21 +238,6 @@
                                     @endforeach
                                 </select>
                             </div>
-
-                            <!-- Potongan Uang Muka DP -->
-                            @if(isset($availableDownPayments) && $availableDownPayments->isNotEmpty())
-                                <div>
-                                    <label class="block font-bold text-slate-700 mb-1">Potong dari Uang Muka / DP (Opsional)</label>
-                                    <select name="down_payment_id" class="w-full select-clean p-2.5 bg-indigo-50/50 text-indigo-900 border border-indigo-200 rounded-xl">
-                                        <option value="">-- Tanpa Potongan DP --</option>
-                                        @foreach($availableDownPayments as $dp)
-                                            <option value="{{ $dp->id }}">
-                                                DP {{ $dp->dp_number }} - {{ $dp->supplier?->name }} (Rp {{ number_format($dp->amount, 0, ',', '.') }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            @endif
 
                             <div>
                                 <label class="block font-bold text-slate-700 mb-1">Total Nilai Tagihan Bruto (Rp) <span class="text-rose-500">*</span></label>

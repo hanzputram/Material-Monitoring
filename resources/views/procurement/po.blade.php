@@ -5,15 +5,33 @@
 @section('page_subtitle', 'Pengelolaan dan penerbitan pesanan pembelian material resmi ke rekanan vendor')
 
 @section('content')
-<div class="space-y-6" x-data="{
+<div class="space-y-6" x-data="Object.assign(tableColumnHandler('po_table', [
+    { key: 'po_number', label: 'No. Pesanan (PO)', visible: true },
+    { key: 'do_number', label: 'No. DO / Surat Jalan (SJ)', visible: true },
+    { key: 'po_date', label: 'Tanggal Pesanan', visible: true },
+    { key: 'supplier', label: 'Rekanan Supplier', visible: true },
+    { key: 'items_count', label: 'Jumlah Item', visible: true },
+    { key: 'total_value', label: 'Total Estimasi Nilai', visible: true },
+    { key: 'creator', label: 'Dibuat Oleh', visible: true },
+    { key: 'status', label: 'Status', visible: true },
+    { key: 'action', label: 'Aksi', visible: true }
+]), {
     showPoModal: false,
     selectedPo: null,
-    showDetailModal: false
-}">
+    showDetailModal: false,
+    showUpdateDoModal: false,
+    updateDoPo: null,
+    updateDoNumber: '',
+    openUpdateDoModal(po) {
+        this.updateDoPo = po;
+        this.updateDoNumber = po.delivery_order_number || '';
+        this.showUpdateDoModal = true;
+    }
+})">
 
     <!-- Sub-Navigasi Modul & Quick Actions -->
     <div class="card-clean p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <!-- Tab Navigation 6 Modul -->
+        <!-- Tab Navigation Modul -->
         @include('procurement.partials.nav_tabs', ['active' => 'po'])
 
         <!-- Action / Permission Status -->
@@ -41,6 +59,8 @@
             </div>
             <div class="flex items-center gap-2">
                 <span class="badge-clean bg-blue-50 text-blue-700 border border-blue-200 text-xs">Total Pesanan: {{ $purchaseOrders->count() }}</span>
+                <!-- Custom Table Column Toggle -->
+                <x-table-column-toggle storageKey="po_table" />
             </div>
         </div>
 
@@ -48,14 +68,15 @@
             <table class="w-full text-left text-xs table-clean min-w-[850px]">
                 <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                     <tr>
-                        <th class="py-3 px-5">No. Pesanan (PO)</th>
-                        <th class="py-3 px-4">Tanggal Pesanan</th>
-                        <th class="py-3 px-4">Rekanan Supplier</th>
-                        <th class="py-3 px-4">Jumlah Item</th>
-                        <th class="py-3 px-5">Total Estimasi Nilai (Rp)</th>
-                        <th class="py-3 px-4">Dibuat Oleh</th>
-                        <th class="py-3 px-4 text-center">Status</th>
-                        <th class="py-3 px-4 text-center">Aksi</th>
+                        <th x-show="isColVisible('po_number')" class="py-3 px-5">No. Pesanan (PO)</th>
+                        <th x-show="isColVisible('do_number')" class="py-3 px-4">No. DO / Surat Jalan (SJ)</th>
+                        <th x-show="isColVisible('po_date')" class="py-3 px-4">Tanggal Pesanan</th>
+                        <th x-show="isColVisible('supplier')" class="py-3 px-4">Rekanan Supplier</th>
+                        <th x-show="isColVisible('items_count')" class="py-3 px-4">Jumlah Item</th>
+                        <th x-show="isColVisible('total_value')" class="py-3 px-5">Total Estimasi Nilai (Rp)</th>
+                        <th x-show="isColVisible('creator')" class="py-3 px-4">Dibuat Oleh</th>
+                        <th x-show="isColVisible('status')" class="py-3 px-4 text-center">Status</th>
+                        <th x-show="isColVisible('action')" class="py-3 px-4 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -64,24 +85,54 @@
                             $totalVal = $po->items->sum(fn($it) => $it->qty_ordered * $it->unit_price);
                         @endphp
                         <tr class="hover:bg-slate-50/60 transition-colors">
-                            <td class="py-3 px-5 font-bold font-mono text-blue-700">{{ $po->po_number }}</td>
-                            <td class="py-3 px-4 text-slate-600 font-medium">{{ \Carbon\Carbon::parse($po->po_date)->format('d/m/Y') }}</td>
-                            <td class="py-3 px-4 font-semibold text-slate-800">{{ $po->supplier?->name ?? 'Vendor Umum' }}</td>
-                            <td class="py-3 px-4 text-slate-600">
+                            <td x-show="isColVisible('po_number')" class="py-3 px-5 font-bold font-mono text-blue-700">{{ $po->po_number }}</td>
+                            <td x-show="isColVisible('do_number')" class="py-3 px-4">
+                                @if($po->delivery_order_number)
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-mono font-bold border border-emerald-200 text-[11px]">
+                                            {{ $po->delivery_order_number }}
+                                        </span>
+                                        @if(auth()->user()?->canWritePo())
+                                            <button type="button" @click='openUpdateDoModal(@json($po))' class="text-slate-400 hover:text-blue-600 cursor-pointer p-0.5" title="Ubah No. DO/SJ">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                            </button>
+                                        @endif
+                                    </div>
+                                @else
+                                    @if(auth()->user()?->canWritePo())
+                                        <button type="button" @click='openUpdateDoModal(@json($po))' class="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-bold hover:underline cursor-pointer">
+                                            <span>+ Catat DO/SJ</span>
+                                        </button>
+                                    @else
+                                        <span class="text-slate-400 italic text-[11px]">-</span>
+                                    @endif
+                                @endif
+                            </td>
+                            <td x-show="isColVisible('po_date')" class="py-3 px-4 text-slate-600 font-medium">{{ \Carbon\Carbon::parse($po->po_date)->format('d/m/Y') }}</td>
+                            <td x-show="isColVisible('supplier')" class="py-3 px-4 font-semibold text-slate-800">{{ $po->supplier?->name ?? 'Vendor Umum' }}</td>
+                            <td x-show="isColVisible('items_count')" class="py-3 px-4 text-slate-600">
                                 <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold">{{ $po->items->count() }} Item</span>
                             </td>
-                            <td class="py-3 px-5 font-mono font-bold text-slate-900">Rp {{ number_format($totalVal, 0, ',', '.') }}</td>
-                            <td class="py-3 px-4 text-slate-500 font-medium">{{ $po->creator?->name ?? 'Purchasing' }}</td>
-                            <td class="py-3 px-4 text-center">
+                            <td x-show="isColVisible('total_value')" class="py-3 px-5 font-mono font-bold text-slate-900">Rp {{ number_format($totalVal, 0, ',', '.') }}</td>
+                            <td x-show="isColVisible('creator')" class="py-3 px-4 text-slate-500 font-medium">{{ $po->creator?->name ?? 'Purchasing' }}</td>
+                            <td x-show="isColVisible('status')" class="py-3 px-4 text-center">
                                 <span class="badge-clean bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">Terkirim / Aktif</span>
                             </td>
-                            <td class="py-3 px-4 text-center">
+                            <td x-show="isColVisible('action')" class="py-3 px-4 text-center">
                                 <div class="flex items-center justify-center gap-1.5">
                                     <button type="button" 
                                             @click="selectedPo = {{ Js::from($po) }}; showDetailModal = true"
                                             class="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
                                         Detail &rarr;
                                     </button>
+                                    @if(auth()->user()?->canWriteDo())
+                                        <a href="{{ route('procurement.do.index', ['project_id' => $project->id, 'open_po_id' => $po->id]) }}" 
+                                           class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg transition-colors"
+                                           title="Input Penerimaan (DO/SJ) untuk PO ini">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                                            <span>Input DO/SJ</span>
+                                        </a>
+                                    @endif
                                     <a href="{{ route('procurement.po.pdf', $po->id) }}" 
                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-colors"
                                        title="Unduh Dokumen PO Resmi (PDF)">
@@ -181,12 +232,20 @@
                     </template>
                 </div>
 
-                <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-                    <div class="flex items-center gap-2">
+                <div class="mt-6 flex flex-wrap items-center justify-between border-t border-slate-100 pt-4 gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if(auth()->user()?->canWriteDo())
+                            <a :href="'{{ route('procurement.do.index', ['project_id' => $project->id]) }}?open_po_id=' + (selectedPo ? selectedPo.id : '')"
+                               class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl shadow-sm transition-all"
+                               title="Input Surat Jalan / Penerimaan Pembelian (DO) untuk PO ini">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                                <span>Input DO / SJ Baru</span>
+                            </a>
+                        @endif
                         <a :href="'/procurement/po/' + (selectedPo ? selectedPo.id : '') + '/pdf'" 
                            class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-xl shadow-sm transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            <span>Unduh Dokumen PDF</span>
+                            <span>Unduh PDF</span>
                         </a>
                         <button type="button"
                                 @click="openDocPreview('/procurement/po/' + (selectedPo ? selectedPo.id : '') + '/pdf?preview=1', 'Pesanan Pembelian (PO): ' + (selectedPo ? selectedPo.po_number : ''), true)"
@@ -195,7 +254,7 @@
                             <span>Pratinjau PDF</span>
                         </button>
                     </div>
-                    <button type="button" @click="showDetailModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Tutup</button>
+                    <button type="button" @click="showDetailModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer">Tutup</button>
                 </div>
             </div>
         </div>
@@ -332,14 +391,25 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="block font-bold text-slate-700 mb-1">Pilih Rekanan Supplier <span class="text-rose-500">*</span></label>
-                                <select name="supplier_id" required class="w-full select-clean p-2.5 bg-white text-slate-800 border border-slate-300 rounded-xl">
-                                    <option value="">-- Pilih Rekanan Supplier --</option>
-                                    @foreach($suppliers as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }} ({{ $s->category ?? 'Supplier' }})</option>
-                                    @endforeach
-                                </select>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">Pilih Rekanan Supplier <span class="text-rose-500">*</span></label>
+                                    <select name="supplier_id" required class="w-full select-clean p-2.5 bg-white text-slate-800 border border-slate-300 rounded-xl">
+                                        <option value="">-- Pilih Rekanan Supplier --</option>
+                                        @foreach($suppliers as $s)
+                                            <option value="{{ $s->id }}">{{ $s->name }} ({{ $s->category ?? 'Supplier' }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">
+                                        Nomor DO / Surat Jalan (SJ) Supplier
+                                        <span class="text-[10px] text-blue-600 font-semibold">(Opsional)</span>
+                                    </label>
+                                    <input type="text" name="delivery_order_number" placeholder="Mis. DO/BPS/2026/089 atau SJ-..." 
+                                           class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono">
+                                    <span class="text-[10px] text-slate-400 mt-0.5 block">Nomor ini akan otomatis difetch petugas lapangan saat input penerimaan fisik.</span>
+                                </div>
                             </div>
 
                             <div>
@@ -552,6 +622,50 @@
                         <div class="mt-6 flex justify-end gap-2">
                             <button type="button" @click="showPoModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
                             <button type="submit" class="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">Terbitkan Pesanan Pembelian</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- MODAL: UPDATE / CATAT NO. DO / SJ PENGIRIMAN PO -->
+    @if(auth()->user()?->canWritePo())
+        <div x-show="showUpdateDoModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showUpdateDoModal = false"></div>
+            <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
+                <div class="relative w-full max-w-md p-6 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                     @click.stop>
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-extrabold text-slate-900">Catat No. DO / Surat Jalan Supplier</h3>
+                                <p class="text-[11px] text-slate-500 font-mono" x-text="updateDoPo ? (updateDoPo.po_number + ' • ' + (updateDoPo.supplier ? updateDoPo.supplier.name : '')) : ''"></p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showUpdateDoModal = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer">&times;</button>
+                    </div>
+
+                    <form :action="'/procurement/po/' + (updateDoPo ? updateDoPo.id : '') + '/update-do'" method="POST" class="space-y-4 text-xs">
+                        @csrf
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">
+                                Nomor DO / Surat Jalan (SJ) Supplier <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" name="delivery_order_number" x-model="updateDoNumber" required placeholder="Mis. DO/BPS/2026/089 atau SJ-2026/001" 
+                                   class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono font-bold text-slate-800 text-sm">
+                            <div class="mt-2.5 p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-[11px] text-blue-900 leading-relaxed">
+                                💡 <strong>Koneksi Otomatis ke Petugas Lapangan:</strong><br>
+                                Petugas lapangan tidak diberi akses ke modul PO. Saat barang tiba di proyek, petugas lapangan akan langsung melihat nomor Surat Jalan ini di dropdown. Memilih nomor ini akan otomatis mengisi supplier dan rincian material dari PO ini tanpa petugas perlu membuka dokumen PO.
+                            </div>
+                        </div>
+
+                        <div class="mt-5 flex justify-end gap-2 pt-3 border-t border-slate-100">
+                            <button type="button" @click="showUpdateDoModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer">Batal</button>
+                            <button type="submit" class="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-all cursor-pointer">Simpan Nomor DO/SJ</button>
                         </div>
                     </form>
                 </div>

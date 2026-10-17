@@ -11,16 +11,16 @@
     <div class="card-clean p-4 sm:p-6 bg-gradient-to-r from-blue-50/60 to-white border-blue-200/70">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <span class="badge-clean bg-blue-100 text-blue-800 text-xs mb-1">Akurasi 100% Berstandar</span>
-                <h3 class="text-base font-bold text-slate-900">Format Template Baku Terkunci</h3>
+                <span class="badge-clean bg-blue-100 text-blue-800 text-xs mb-1">Template Resmi Baku v2</span>
+                <h3 class="text-base font-bold text-slate-900">Template RAB Konstruksi Baku v2</h3>
                 <p class="text-xs text-slate-600 mt-1 max-w-xl">
-                    Sistem menggunakan template Excel baku dengan 2 sheet: <strong>"Info Proyek"</strong> dan <strong>"Detail RAB"</strong> (kolom Level 1–5, Kode, Uraian, Volume, Satuan, Harga). Unduh template resmi sebelum mengunggah.
+                    Dilengkapi panduan lengkap: sheet <strong>"Petunjuk"</strong> (aturan & arti level), <strong>"Contoh Pengisian"</strong> (contoh Level 1–5), <strong>"Info Proyek"</strong>, dan <strong>"Detail RAB"</strong> dengan formula otomatis.
                 </p>
             </div>
             <a href="{{ route('rab.template.download') }}" 
                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all flex-shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                Unduh Template Resmi (.xlsx)
+                Unduh Template v2 (.xlsx)
             </a>
         </div>
     </div>

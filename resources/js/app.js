@@ -7,6 +7,49 @@ window.ApexCharts = ApexCharts;
 window.initAllCustomSelects = initAllCustomSelects;
 window.initCustomSelect = initCustomSelect;
 
+window.tableColumnHandler = function(storageKey, defaultCols) {
+    return {
+        cols: (defaultCols || []).map(c => typeof c === 'string' ? { key: c, visible: true } : { key: c.key, visible: c.visible !== false }),
+        init() {
+            try {
+                const saved = localStorage.getItem('table_cols_' + storageKey);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    this.cols.forEach(c => {
+                        if (parsed[c.key] !== undefined) c.visible = parsed[c.key];
+                    });
+                }
+            } catch(e) {}
+        },
+        toggleCol(key) {
+            const col = this.cols.find(c => c.key === key);
+            if (col) {
+                col.visible = !col.visible;
+                this.persist();
+            }
+        },
+        isColVisible(key) {
+            const col = this.cols.find(c => c.key === key);
+            return col ? col.visible : true;
+        },
+        setAllCols(val) {
+            this.cols.forEach(c => c.visible = val);
+            this.persist();
+        },
+        resetCols() {
+            this.cols = defaultCols.map(c => ({ ...c }));
+            this.persist();
+        },
+        persist() {
+            try {
+                const state = {};
+                this.cols.forEach(c => state[c.key] = c.visible);
+                localStorage.setItem('table_cols_' + storageKey, JSON.stringify(state));
+            } catch(e) {}
+        }
+    };
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initAllCustomSelects();
 

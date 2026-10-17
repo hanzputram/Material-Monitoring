@@ -126,11 +126,25 @@
     </div>
 
     <!-- TABEL DAFTAR RETUR PEMBELIAN -->
-    <div class="card-clean overflow-hidden">
+    <div class="card-clean overflow-hidden"
+         x-data="window.tableColumnHandler('returns_table', ['return_number', 'return_date', 'supplier', 'do_ref', 'compensation', 'items', 'total_amount', 'attachment', 'actions'])">
         <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
                 <h3 class="text-sm font-bold text-slate-900">Riwayat Retur Pembelian</h3>
                 <p class="text-xs text-slate-500">Daftar pengembalian material rusak atau berlebih kepada toko/supplier proyek</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <x-table-column-toggle storageKey="returns_table" :columns="[
+                    ['key' => 'return_number', 'label' => 'No. Retur'],
+                    ['key' => 'return_date', 'label' => 'Tanggal'],
+                    ['key' => 'supplier', 'label' => 'Toko / Supplier'],
+                    ['key' => 'do_ref', 'label' => 'Referensi DO'],
+                    ['key' => 'compensation', 'label' => 'Kompensasi'],
+                    ['key' => 'items', 'label' => 'Rincian Material'],
+                    ['key' => 'total_amount', 'label' => 'Nilai Retur'],
+                    ['key' => 'attachment', 'label' => 'Bukti Retur'],
+                    ['key' => 'actions', 'label' => 'Aksi']
+                ]" />
             </div>
         </div>
 
@@ -153,36 +167,36 @@
                 <table class="w-full text-left border-collapse text-xs min-w-[1100px]">
                     <thead>
                         <tr class="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <th class="py-3 px-4 w-[160px]">No. Retur</th>
-                            <th class="py-3 px-4 w-[110px]">Tanggal</th>
-                            <th class="py-3 px-4 w-[200px]">Toko / Supplier</th>
-                            <th class="py-3 px-4 w-[140px]">Referensi DO</th>
-                            <th class="py-3 px-4 w-[140px]">Kompensasi</th>
-                            <th class="py-3 px-4">Rincian Material Diretur</th>
-                            <th class="py-3 px-4 text-right w-[140px]">Nilai Retur</th>
-                            <th class="py-3 px-4 text-center w-[120px]">Bukti Retur</th>
-                            <th class="py-3 px-4 text-right w-[70px]">Aksi</th>
+                            <th class="py-3 px-4 w-[160px]" x-show="isColVisible('return_number')">No. Retur</th>
+                            <th class="py-3 px-4 w-[110px]" x-show="isColVisible('return_date')">Tanggal</th>
+                            <th class="py-3 px-4 w-[200px]" x-show="isColVisible('supplier')">Toko / Supplier</th>
+                            <th class="py-3 px-4 w-[140px]" x-show="isColVisible('do_ref')">Referensi DO</th>
+                            <th class="py-3 px-4 w-[140px]" x-show="isColVisible('compensation')">Kompensasi</th>
+                            <th class="py-3 px-4" x-show="isColVisible('items')">Rincian Material Diretur</th>
+                            <th class="py-3 px-4 text-right w-[140px]" x-show="isColVisible('total_amount')">Nilai Retur</th>
+                            <th class="py-3 px-4 text-center w-[120px]" x-show="isColVisible('attachment')">Bukti Retur</th>
+                            <th class="py-3 px-4 text-right w-[70px]" x-show="isColVisible('actions')">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach($returns as $ret)
                             <tr class="hover:bg-slate-50/60 transition-colors">
-                                <td class="py-3 px-4 whitespace-nowrap">
+                                <td class="py-3 px-4 whitespace-nowrap" x-show="isColVisible('return_number')">
                                     <div class="font-mono font-bold text-rose-700">{{ $ret->return_number }}</div>
                                     @if($ret->creator)
                                         <span class="text-[10px] text-slate-400">Oleh: {{ $ret->creator->name }}</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 text-slate-600 whitespace-nowrap">
+                                <td class="py-3 px-4 text-slate-600 whitespace-nowrap" x-show="isColVisible('return_date')">
                                     {{ $ret->return_date ? $ret->return_date->format('d/m/Y') : '-' }}
                                 </td>
-                                <td class="py-3 px-4">
+                                <td class="py-3 px-4" x-show="isColVisible('supplier')">
                                     <div class="font-bold text-slate-800 whitespace-nowrap">{{ $ret->supplier?->name ?? 'Non-Supplier' }}</div>
                                     @if($ret->supplier?->phone)
                                         <span class="text-[10px] text-slate-400 font-mono">{{ $ret->supplier->phone }}</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 whitespace-nowrap">
+                                <td class="py-3 px-4 whitespace-nowrap" x-show="isColVisible('do_ref')">
                                     @if($ret->deliveryOrder)
                                         <span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-slate-100 text-slate-700 rounded border border-slate-200">
                                             DO: {{ $ret->deliveryOrder->do_number }}
@@ -191,7 +205,7 @@
                                         <span class="text-slate-400 italic">Tanpa Ref DO</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 whitespace-nowrap">
+                                <td class="py-3 px-4 whitespace-nowrap" x-show="isColVisible('compensation')">
                                     @if($ret->compensation_type === 'potong_tagihan')
                                         <span class="px-2 py-1 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                                             Potong Tagihan
@@ -206,7 +220,7 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4">
+                                <td class="py-3 px-4" x-show="isColVisible('items')">
                                     <div class="space-y-1">
                                         @foreach($ret->items as $item)
                                             <div class="flex items-center gap-1.5 text-[11px]">
@@ -219,10 +233,10 @@
                                         @endforeach
                                     </div>
                                 </td>
-                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap" x-show="isColVisible('total_amount')">
                                     Rp {{ number_format($ret->total_amount, 0, ',', '.') }}
                                 </td>
-                                <td class="py-3 px-4 text-center whitespace-nowrap">
+                                <td class="py-3 px-4 text-center whitespace-nowrap" x-show="isColVisible('attachment')">
                                     @if($ret->attachment_path)
                                         <a href="{{ route('storage.fallback', $ret->attachment_path) }}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -232,7 +246,7 @@
                                         <span class="text-slate-400 text-[11px]">-</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 text-right whitespace-nowrap">
+                                <td class="py-3 px-4 text-right whitespace-nowrap" x-show="isColVisible('actions')">
                                     @if(auth()->user()?->canWriteReturn())
                                         <form action="{{ route('procurement.returns.destroy', $ret->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus Retur {{ $ret->return_number }}? Kuota realisasi lapangan akan disinkronkan kembali.');" class="inline">
                                             @csrf

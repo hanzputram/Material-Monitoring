@@ -5,15 +5,25 @@
 @section('page_subtitle', 'Penerimaan fisik material di lapangan dan pencatatan kuantiti riil penerimaan pembelian vendor')
 
 @section('content')
-<div class="space-y-6" x-data="{
-    showDoModal: false,
+<div class="space-y-6" x-data="Object.assign(tableColumnHandler('do_table', [
+    { key: 'do_number', label: 'No. Penerimaan (DO)', visible: true },
+    { key: 'do_date', label: 'Tanggal Terima', visible: true },
+    { key: 'supplier', label: 'Supplier', visible: true },
+    { key: 'po_ref', label: 'No. PO Ref', visible: true },
+    { key: 'materials', label: 'Material & Kuantiti', visible: true },
+    { key: 'attachment', label: 'Bukti Fisik', visible: true },
+    { key: 'receiver', label: 'Penerima', visible: true },
+    { key: 'status', label: 'Status', visible: true },
+    { key: 'action', label: 'Aksi', visible: true }
+]), {
+    showDoModal: {{ request()->has('open_po_id') ? 'true' : 'false' }},
     selectedDo: null,
     showDetailModal: false
-}">
+})">
 
     <!-- Sub-Navigasi Modul & Quick Actions -->
     <div class="card-clean p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <!-- Tab Navigation 6 Modul -->
+        <!-- Tab Navigation Modul -->
         @include('procurement.partials.nav_tabs', ['active' => 'do'])
 
         <!-- Action / Permission Status -->
@@ -39,6 +49,8 @@
             </div>
             <div class="flex items-center gap-2">
                 <span class="badge-clean bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs">Total Penerimaan: {{ $deliveryOrders->count() }}</span>
+                <!-- Custom Table Column Toggle -->
+                <x-table-column-toggle storageKey="do_table" />
             </div>
         </div>
 
@@ -46,26 +58,26 @@
             <table class="w-full text-left text-xs table-clean min-w-[900px]">
                 <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                     <tr>
-                        <th class="py-3 px-5">No. Penerimaan (DO)</th>
-                        <th class="py-3 px-4">Tanggal Terima</th>
-                        <th class="py-3 px-4">Supplier</th>
-                        <th class="py-3 px-4">No. Pesanan (PO) Ref</th>
-                        <th class="py-3 px-5">Material &amp; Kuantiti Diterima</th>
-                        <th class="py-3 px-4 text-center">Bukti Fisik</th>
-                        <th class="py-3 px-4">Penerima</th>
-                        <th class="py-3 px-4 text-center">Status</th>
+                        <th x-show="isColVisible('do_number')" class="py-3 px-5">No. Penerimaan (DO)</th>
+                        <th x-show="isColVisible('do_date')" class="py-3 px-4">Tanggal Terima</th>
+                        <th x-show="isColVisible('supplier')" class="py-3 px-4">Supplier</th>
+                        <th x-show="isColVisible('po_ref')" class="py-3 px-4">No. Pesanan (PO) Ref</th>
+                        <th x-show="isColVisible('materials')" class="py-3 px-5">Material &amp; Kuantiti Diterima</th>
+                        <th x-show="isColVisible('attachment')" class="py-3 px-4 text-center">Bukti Fisik</th>
+                        <th x-show="isColVisible('receiver')" class="py-3 px-4">Penerima</th>
+                        <th x-show="isColVisible('status')" class="py-3 px-4 text-center">Status</th>
                         @if(auth()->user()?->canWriteDo())
-                            <th class="py-3 px-4 text-center w-20">Aksi</th>
+                            <th x-show="isColVisible('action')" class="py-3 px-4 text-center w-20">Aksi</th>
                         @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($deliveryOrders as $do)
                         <tr class="hover:bg-slate-50/60 transition-colors">
-                            <td class="py-3 px-5 font-bold font-mono text-slate-900">{{ $do->do_number }}</td>
-                            <td class="py-3 px-4 text-slate-600 font-medium whitespace-nowrap">{{ \Carbon\Carbon::parse($do->do_date)->format('d/m/Y') }}</td>
-                            <td class="py-3 px-4 font-semibold text-slate-800">{{ $do->supplier?->name ?? 'Vendor' }}</td>
-                            <td class="py-3 px-4 font-mono text-xs">
+                            <td x-show="isColVisible('do_number')" class="py-3 px-5 font-bold font-mono text-slate-900">{{ $do->do_number }}</td>
+                            <td x-show="isColVisible('do_date')" class="py-3 px-4 text-slate-600 font-medium whitespace-nowrap">{{ \Carbon\Carbon::parse($do->do_date)->format('d/m/Y') }}</td>
+                            <td x-show="isColVisible('supplier')" class="py-3 px-4 font-semibold text-slate-800">{{ $do->supplier?->name ?? 'Vendor' }}</td>
+                            <td x-show="isColVisible('po_ref')" class="py-3 px-4 font-mono text-xs">
                                 <div class="flex flex-wrap items-center gap-1">
                                     @if($do->purchaseOrders->isNotEmpty())
                                         @foreach($do->purchaseOrders as $lpo)
@@ -90,7 +102,7 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="py-3 px-5">
+                            <td x-show="isColVisible('materials')" class="py-3 px-5">
                                 <div class="space-y-1">
                                     @foreach($do->items as $it)
                                         <div class="flex items-center gap-2 flex-wrap">
@@ -112,7 +124,7 @@
                                     @endforeach
                                 </div>
                             </td>
-                            <td class="py-3 px-4 text-center">
+                            <td x-show="isColVisible('attachment')" class="py-3 px-4 text-center">
                                 @if($do->attachment_path)
                                     <button type="button" 
                                             onclick="openDocPreview('{{ asset('storage/' . $do->attachment_path) }}', 'Penerimaan Pembelian (DO): {{ addslashes($do->do_number) }}')"
@@ -124,12 +136,12 @@
                                     <span class="text-slate-400 italic text-[11px]">Tanpa lampiran</span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 text-slate-600 font-medium">{{ $do->receiver?->name ?? 'Pengawas Lapangan' }}</td>
-                            <td class="py-3 px-4 text-center">
+                            <td x-show="isColVisible('receiver')" class="py-3 px-4 text-slate-600 font-medium">{{ $do->receiver?->name ?? 'Pengawas Lapangan' }}</td>
+                            <td x-show="isColVisible('status')" class="py-3 px-4 text-center">
                                 <span class="badge-clean bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">Terverifikasi Lapangan</span>
                             </td>
                             @if(auth()->user()?->canWriteDo())
-                                <td class="py-3 px-4 text-center">
+                                <td x-show="isColVisible('action')" class="py-3 px-4 text-center">
                                     <form action="{{ route('procurement.do.destroy', $do->id) }}" method="POST" 
                                           onsubmit="return confirm('Apakah Anda yakin ingin menghapus Penerimaan Pembelian {{ $do->do_number }}? Seluruh kuota realisasi material terkait akan dikalkulasi ulang.');"
                                           class="inline-block">
@@ -185,22 +197,83 @@
                             'code' => $u->code,
                             'name' => $u->name ?? $u->code,
                         ])) }},
+                        scheduledDeliveries: {{ Js::from($scheduledDeliveries) }},
                         purchaseOrders: {{ Js::from($purchaseOrders->map(fn($po) => [
                             'id' => $po->id,
                             'po_number' => $po->po_number,
+                            'do_number' => $po->delivery_order_number,
                             'supplier_id' => $po->supplier_id,
                             'supplier_name' => $po->supplier?->name ?? 'Vendor',
+                            'items' => $po->items->map(fn($it) => [
+                                'material_id' => $it->material_id,
+                                'qty_ordered' => (float)$it->qty_ordered,
+                                'unit_id' => $it->unit_id ?? $it->material?->default_unit_id,
+                            ]),
                         ])) }},
-                        selectedPoIds: [],
+                        selectedDeliveryKey: '',
+                        doNumberInput: '',
+                        selectedPoId: '{{ request('open_po_id', '') }}',
+                        selectedSupplierId: '',
                         openMaterialIdx: null,
                         openUnitIdx: null,
                         materialSearch: '',
                         items: [
                             { material_id: '', purchase_order_id: '', qty_received: '', unit_id: '' }
                         ],
+                        init() {
+                            if (this.selectedPoId) {
+                                let po = this.purchaseOrders.find(p => String(p.id) === String(this.selectedPoId));
+                                if (po) {
+                                    if (po.do_number) {
+                                        this.selectedDeliveryKey = po.do_number;
+                                        this.doNumberInput = po.do_number;
+                                    } else {
+                                        this.selectedDeliveryKey = 'custom';
+                                        this.doNumberInput = '';
+                                    }
+                                    this.selectedSupplierId = po.supplier_id;
+                                    if (po.items && po.items.length > 0) {
+                                        this.items = po.items.map(it => ({
+                                            material_id: it.material_id,
+                                            purchase_order_id: po.id,
+                                            qty_received: it.qty_ordered,
+                                            unit_id: it.unit_id || ''
+                                        }));
+                                    }
+                                }
+                            }
+                        },
+                        onDeliverySelect() {
+                            if (!this.selectedDeliveryKey) {
+                                this.doNumberInput = '';
+                                this.selectedPoId = '';
+                                this.selectedSupplierId = '';
+                                return;
+                            }
+                            if (this.selectedDeliveryKey === 'custom') {
+                                this.doNumberInput = '';
+                                this.selectedPoId = '';
+                                this.selectedSupplierId = '';
+                                this.items = [{ material_id: '', purchase_order_id: '', qty_received: '', unit_id: '' }];
+                                return;
+                            }
+                            let deliv = this.scheduledDeliveries.find(d => d.do_number === this.selectedDeliveryKey);
+                            if (deliv) {
+                                this.doNumberInput = deliv.do_number;
+                                this.selectedPoId = deliv.po_id;
+                                this.selectedSupplierId = deliv.supplier_id;
+                                if (deliv.items && deliv.items.length > 0) {
+                                    this.items = deliv.items.map(it => ({
+                                        material_id: it.material_id,
+                                        purchase_order_id: deliv.po_id,
+                                        qty_received: it.qty_ordered,
+                                        unit_id: it.unit_id || ''
+                                    }));
+                                }
+                            }
+                        },
                         addItem() {
-                            let defaultPo = this.selectedPoIds.length === 1 ? this.selectedPoIds[0] : '';
-                            this.items.push({ material_id: '', purchase_order_id: defaultPo, qty_received: '', unit_id: '' });
+                            this.items.push({ material_id: '', purchase_order_id: this.selectedPoId || '', qty_received: '', unit_id: '' });
                         },
                         removeItem(idx) {
                             if (this.items.length > 1) {
@@ -208,18 +281,6 @@
                             }
                             if (this.openMaterialIdx === idx) this.openMaterialIdx = null;
                             if (this.openUnitIdx === idx) this.openUnitIdx = null;
-                        },
-                        togglePo(id) {
-                            let numId = Number(id);
-                            let index = this.selectedPoIds.indexOf(numId);
-                            if (index > -1) {
-                                this.selectedPoIds.splice(index, 1);
-                            } else {
-                                this.selectedPoIds.push(numId);
-                            }
-                        },
-                        isPoSelected(id) {
-                            return this.selectedPoIds.includes(Number(id));
                         },
                         selectMaterial(idx, mat) {
                             this.items[idx].material_id = mat.id;
@@ -253,78 +314,90 @@
                         @csrf
                         <input type="hidden" name="project_id" value="{{ $project->id }}">
 
-                        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <!-- Modal Header -->
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
                             <div>
-                                <span class="badge-clean bg-emerald-100 text-emerald-800 text-[10px] mb-1 font-bold">Pengawas Lapangan</span>
-                                <h3 class="text-base font-extrabold text-slate-900">Input Penerimaan Pembelian (DO) Diterima</h3>
-                                <p class="text-xs text-slate-500">Mencatat barang tiba fisik (bisa untuk 1 atau beberapa Pesanan Pembelian sekaligus)</p>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="badge-clean bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">Pengawas Lapangan</span>
+                                    <span class="text-[11px] text-slate-400 font-mono">Penerimaan Pembelian (DO)</span>
+                                </div>
+                                <h3 class="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">Input Penerimaan Pembelian (DO) Diterima</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Mencatat barang tiba fisik berdasarkan Surat Jalan yang dikirim supplier</p>
                             </div>
-                            <button type="button" @click="showDoModal = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer">&times;</button>
+                            <button type="button" @click="showDoModal = false" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors text-lg font-bold cursor-pointer">&times;</button>
                         </div>
 
                         <div class="space-y-4 text-xs">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block font-bold text-slate-700 mb-1">Nomor Penerimaan / Surat Jalan (DO) <span class="text-rose-500">*</span></label>
-                                    <input type="text" name="do_number" required placeholder="Mis. DO/BPS/2026/089" 
-                                           class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono font-bold">
-                                </div>
-                                <div>
-                                    <label class="block font-bold text-slate-700 mb-1">Tanggal Terima di Lokasi <span class="text-rose-500">*</span></label>
-                                    <input type="date" name="do_date" value="{{ date('Y-m-d') }}" required 
-                                           class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <!-- Card Pilihan DO/SJ dari Jadwal PO & Konfirmasi Nomor DO Fisik -->
+                            <div class="bg-gradient-to-r from-blue-50/70 via-indigo-50/30 to-slate-50 border border-blue-100/80 rounded-2xl p-4 shadow-2xs">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                    <div>
+                                        <label class="block font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                                            <span>Pilih Surat Jalan (DO/SJ) Tiba</span>
+                                            <span class="text-rose-500">*</span>
+                                        </label>
+                                        <select x-model="selectedDeliveryKey" @change="onDeliverySelect()" 
+                                                class="w-full select-clean p-2.5 bg-white text-slate-800 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 shadow-2xs text-xs">
+                                            <option value="">-- Pilih Surat Jalan (DO/SJ) --</option>
+                                            <template x-for="deliv in scheduledDeliveries" :key="deliv.do_number">
+                                                <option :value="deliv.do_number" x-text="deliv.do_number + ' — ' + deliv.supplier_name"></option>
+                                            </template>
+                                            <option value="custom">✍️ Input Nomor Surat Jalan Manual (Tanpa Jadwal PO)</option>
+                                        </select>
+                                        <span class="text-[10px] text-blue-600 font-medium mt-1.5 block">
+                                            ✦ Nomor DO/SJ difetch otomatis dari jadwal pengiriman PO. Surat Jalan yang sudah diterima sebelumnya tidak dapat diinput ulang demi integritas data.
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-slate-800 mb-1.5 flex items-center justify-between">
+                                            <span>Nomor Surat Jalan Fisik (DO) <span class="text-rose-500">*</span></span>
+                                            <template x-if="selectedDeliveryKey && selectedDeliveryKey !== 'custom'">
+                                                <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Terkunci (PO)</span>
+                                            </template>
+                                        </label>
+                                        <input type="text" name="do_number" x-model="doNumberInput" required placeholder="Mis. DO/BPS/2026/089" 
+                                               :readonly="selectedDeliveryKey && selectedDeliveryKey !== 'custom'"
+                                               class="w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 font-mono font-bold text-xs"
+                                               :class="selectedDeliveryKey && selectedDeliveryKey !== 'custom' ? 'bg-slate-100/90 text-blue-900 border-slate-300 cursor-not-allowed' : 'bg-white border-slate-300 text-slate-800'">
+                                        <span class="text-[10px] text-slate-400 mt-1.5 block" x-show="selectedDeliveryKey && selectedDeliveryKey !== 'custom'">
+                                            Sesuai nomor fisik pada berkas surat jalan supplier.
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Baris 2: Tanggal Terima & Rekanan Supplier (Otomatis Terisi) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div>
-                                    <label class="block font-bold text-slate-700 mb-1">Rekanan Supplier <span class="text-rose-500">*</span></label>
-                                    <select name="supplier_id" required class="w-full select-clean p-2.5 bg-white text-slate-800 border border-slate-300 rounded-xl">
+                                    <label class="block font-bold text-slate-700 mb-1.5">Tanggal Terima Fisik di Lokasi <span class="text-rose-500">*</span></label>
+                                    <input type="date" name="do_date" value="{{ date('Y-m-d') }}" required 
+                                           class="w-full p-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-xs shadow-2xs">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                                        <span>Rekanan Supplier <span class="text-rose-500">*</span></span>
+                                        <span x-show="selectedDeliveryKey && selectedDeliveryKey !== 'custom'" class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Otomatis Sesuai PO</span>
+                                    </label>
+                                    <select x-model="selectedSupplierId" :disabled="selectedDeliveryKey && selectedDeliveryKey !== 'custom'" required 
+                                            class="w-full select-clean p-2.5 bg-white text-slate-800 border border-slate-300 rounded-xl font-medium text-xs shadow-2xs" 
+                                            :class="selectedDeliveryKey && selectedDeliveryKey !== 'custom' ? 'bg-slate-100 cursor-not-allowed text-slate-800 font-semibold' : ''">
                                         <option value="">-- Pilih Supplier --</option>
                                         @foreach($suppliers as $s)
                                             <option value="{{ $s->id }}">{{ $s->name }}</option>
                                         @endforeach
                                     </select>
-                                </div>
-                                <div>
-                                    <div class="flex items-center justify-between mb-1">
-                                        <label class="block font-bold text-slate-700">
-                                            Referensi Pesanan Pembelian (PO)
-                                        </label>
-                                        <span class="text-[10px] text-amber-700 font-bold" x-show="selectedPoIds.length > 0">
-                                            <span x-text="selectedPoIds.length"></span> Pesanan (PO) Terpilih
-                                        </span>
-                                    </div>
-
-                                    <!-- Hidden Inputs for multi PO -->
-                                    <template x-for="pId in selectedPoIds" :key="pId">
-                                        <input type="hidden" name="purchase_order_ids[]" :value="pId">
-                                    </template>
-
-                                    <!-- Multi-PO Select List -->
-                                    <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl max-h-28 overflow-y-auto custom-scrollbar space-y-1">
-                                        @forelse($purchaseOrders as $po)
-                                            <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white text-xs cursor-pointer transition-colors"
-                                                   :class="isPoSelected({{ $po->id }}) ? 'bg-amber-50 font-bold text-amber-900 border border-amber-200' : 'text-slate-700'">
-                                                <input type="checkbox" 
-                                                       :checked="isPoSelected({{ $po->id }})"
-                                                       @change="togglePo({{ $po->id }})"
-                                                       class="rounded border-slate-300 text-amber-600 focus:ring-amber-500">
-                                                <span class="font-mono">{{ $po->po_number }}</span>
-                                                <span class="text-[10px] text-slate-400">({{ $po->supplier?->name ?? 'Vendor' }})</span>
-                                            </label>
-                                        @empty
-                                            <div class="text-[11px] text-slate-400 italic p-1">Belum ada Pesanan Pembelian aktif (Pembelian Langsung / Tunai)</div>
-                                        @endforelse
-                                    </div>
-                                    <span class="text-[10px] text-slate-400 mt-1 block">Centang 1 atau beberapa Pesanan Pembelian (PO) yang barangnya diangkut dalam penerimaan ini.</span>
+                                    <input type="hidden" name="supplier_id" :value="selectedSupplierId">
+                                    <input type="hidden" name="purchase_order_id" :value="selectedPoId">
                                 </div>
                             </div>
 
+                            <!-- Upload Bukti Fisik -->
                             <div>
-                                <label class="block font-bold text-slate-700 mb-1">Upload Bukti Fisik Penerimaan / Foto Lapangan <span class="text-rose-500 font-bold">* Wajib</span></label>
-                                <input type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png" required 
-                                       class="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                <label class="block font-bold text-slate-700 mb-1.5">Upload Bukti Fisik Penerimaan / Foto Lapangan <span class="text-rose-500 font-bold">* Wajib</span></label>
+                                <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                                    <input type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png" required 
+                                           class="w-full p-1 text-xs bg-transparent border-0 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                                </div>
                                 <span class="text-[10px] text-slate-400 mt-1 block">Wajib unggah foto fisik dokumen penerimaan / surat jalan bertanda tangan pengawas (PDF, JPG, PNG maks 10MB)</span>
                             </div>
 
@@ -333,7 +406,7 @@
                                 <div class="flex items-center justify-between mb-2">
                                     <div>
                                         <span class="font-bold text-slate-800">Rincian Material Diterima <span class="text-rose-500">*</span></span>
-                                        <span class="text-[10px] text-slate-400 block">Pilih material, alokasi PO per baris (opsional), kuantiti, dan satuan</span>
+                                        <span class="text-[10px] text-slate-400 block">Pilih material, kuantiti riil yang tiba, dan satuan</span>
                                     </div>
                                     <button type="button" @click="addItem()" class="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1 cursor-pointer">
                                         + Tambah Baris Material
@@ -343,8 +416,10 @@
                                 <div class="space-y-2 border border-slate-200 rounded-xl p-3 bg-slate-50/50">
                                     <template x-for="(it, idx) in items" :key="idx">
                                         <div class="grid grid-cols-12 gap-2 items-center bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs">
-                                            <!-- Material (col-span-4) -->
-                                            <div class="col-span-4 relative">
+                                            <input type="hidden" :name="'items[' + idx + '][purchase_order_id]'" :value="it.purchase_order_id || selectedPoId">
+
+                                            <!-- Material (col-span-6) -->
+                                            <div class="col-span-6 relative">
                                                 <input type="hidden" :name="'items[' + idx + '][material_id]'" :value="it.material_id">
                                                 <button type="button" 
                                                         @click="openMaterialIdx = (openMaterialIdx === idx ? null : idx); openUnitIdx = null"
@@ -383,24 +458,11 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Ref PO per Item (col-span-3) -->
+                                            <!-- Qty Received (col-span-3) -->
                                             <div class="col-span-3">
-                                                <select :name="'items[' + idx + '][purchase_order_id]'" 
-                                                        x-model="it.purchase_order_id" 
-                                                        class="w-full p-2 bg-white border border-slate-200 rounded-xl text-[11px] font-mono focus:ring-2 focus:ring-blue-500 font-semibold"
-                                                        :class="it.purchase_order_id ? 'text-amber-900 bg-amber-50/50 border-amber-300' : 'text-emerald-800 bg-emerald-50/30 border-emerald-300'">
-                                                    <option value="">💵 Tunai (Non-PO)</option>
-                                                    @foreach($purchaseOrders as $po)
-                                                        <option value="{{ $po->id }}">📑 {{ $po->po_number }} ({{ $po->supplier?->name ?? 'Vendor' }})</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-
-                                            <!-- Qty Received (col-span-2) -->
-                                            <div class="col-span-2">
                                                 <input type="number" step="any" :name="'items[' + idx + '][qty_received]'" 
                                                        x-model="it.qty_received"
-                                                       placeholder="Kuantiti" required class="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500">
+                                                       placeholder="Kuantiti Fisik" required class="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500">
                                             </div>
 
                                             <!-- Satuan (col-span-2) -->
@@ -440,7 +502,11 @@
 
                                             <!-- Remove (col-span-1) -->
                                             <div class="col-span-1 text-center">
-                                                <button type="button" @click="removeItem(idx)" class="p-1 text-slate-400 hover:text-rose-600 font-bold text-sm cursor-pointer" title="Hapus baris">&times;</button>
+                                                <button type="button" @click="removeItem(idx)" 
+                                                        class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center mx-auto transition-colors cursor-pointer" 
+                                                        title="Hapus baris">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
                                             </div>
                                         </div>
                                     </template>
@@ -453,9 +519,12 @@
                             </div>
                         </div>
 
-                        <div class="mt-6 flex justify-end gap-2">
-                            <button type="button" @click="showDoModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">Batal</button>
-                            <button type="submit" class="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">Simpan Penerimaan Pembelian</button>
+                        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                            <button type="button" @click="showDoModal = false" class="px-4 py-2.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors cursor-pointer">Batal</button>
+                            <button type="submit" class="px-5 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl shadow-sm transition-all cursor-pointer inline-flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                <span>Simpan Penerimaan Pembelian</span>
+                            </button>
                         </div>
                     </form>
                 </div>

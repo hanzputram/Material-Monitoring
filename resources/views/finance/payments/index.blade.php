@@ -138,11 +138,24 @@
     </div>
 
     <!-- TABEL DAFTAR PEMBAYARAN PEMBELIAN -->
-    <div class="card-clean overflow-hidden">
+    <div class="card-clean overflow-hidden"
+         x-data="window.tableColumnHandler('payments_table', ['payment_number', 'payment_date', 'supplier', 'payment_method', 'invoices', 'total_amount', 'attachment', 'actions'])">
         <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
                 <h3 class="text-sm font-bold text-slate-900">Riwayat Pembayaran Pembelian</h3>
                 <p class="text-xs text-slate-500">Daftar transaksi pembayaran dan pelunasan faktur tagihan supplier pada proyek aktif</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <x-table-column-toggle storageKey="payments_table" :columns="[
+                    ['key' => 'payment_number', 'label' => 'No. Pembayaran'],
+                    ['key' => 'payment_date', 'label' => 'Tanggal'],
+                    ['key' => 'supplier', 'label' => 'Toko / Supplier'],
+                    ['key' => 'payment_method', 'label' => 'Metode Bayar'],
+                    ['key' => 'invoices', 'label' => 'Faktur Terkait'],
+                    ['key' => 'total_amount', 'label' => 'Total Bayar'],
+                    ['key' => 'attachment', 'label' => 'Bukti Transfer'],
+                    ['key' => 'actions', 'label' => 'Aksi']
+                ]" />
             </div>
         </div>
 
@@ -165,41 +178,41 @@
                 <table class="w-full text-left border-collapse text-xs min-w-[1050px]">
                     <thead>
                         <tr class="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <th class="py-3 px-4 w-[160px]">No. Pembayaran</th>
-                            <th class="py-3 px-4 w-[110px]">Tanggal</th>
-                            <th class="py-3 px-4 w-[200px]">Toko / Supplier</th>
-                            <th class="py-3 px-4 w-[140px]">Metode Bayar</th>
-                            <th class="py-3 px-4">Faktur Terkait</th>
-                            <th class="py-3 px-4 text-right w-[150px]">Total Bayar</th>
-                            <th class="py-3 px-4 text-center w-[120px]">Bukti Transfer</th>
-                            <th class="py-3 px-4 text-right w-[70px]">Aksi</th>
+                            <th class="py-3 px-4 w-[160px]" x-show="isColVisible('payment_number')">No. Pembayaran</th>
+                            <th class="py-3 px-4 w-[110px]" x-show="isColVisible('payment_date')">Tanggal</th>
+                            <th class="py-3 px-4 w-[200px]" x-show="isColVisible('supplier')">Toko / Supplier</th>
+                            <th class="py-3 px-4 w-[140px]" x-show="isColVisible('payment_method')">Metode Bayar</th>
+                            <th class="py-3 px-4" x-show="isColVisible('invoices')">Faktur Terkait</th>
+                            <th class="py-3 px-4 text-right w-[150px]" x-show="isColVisible('total_amount')">Total Bayar</th>
+                            <th class="py-3 px-4 text-center w-[120px]" x-show="isColVisible('attachment')">Bukti Transfer</th>
+                            <th class="py-3 px-4 text-right w-[70px]" x-show="isColVisible('actions')">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach($payments as $pay)
                             <tr class="hover:bg-slate-50/60 transition-colors">
-                                <td class="py-3 px-4 whitespace-nowrap">
+                                <td class="py-3 px-4 whitespace-nowrap" x-show="isColVisible('payment_number')">
                                     <div class="font-mono font-bold text-blue-700">{{ $pay->payment_number }}</div>
                                     @if($pay->creator)
                                         <span class="text-[10px] text-slate-400">Oleh: {{ $pay->creator->name }}</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 text-slate-600 whitespace-nowrap">
+                                <td class="py-3 px-4 text-slate-600 whitespace-nowrap" x-show="isColVisible('payment_date')">
                                     {{ $pay->payment_date ? $pay->payment_date->format('d/m/Y') : '-' }}
                                 </td>
-                                <td class="py-3 px-4">
+                                <td class="py-3 px-4" x-show="isColVisible('supplier')">
                                     <div class="font-bold text-slate-800 whitespace-nowrap">{{ $pay->supplier?->name ?? 'Non-Supplier' }}</div>
                                     @if($pay->supplier?->phone)
                                         <span class="text-[10px] text-slate-400 font-mono">{{ $pay->supplier->phone }}</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 whitespace-nowrap">
+                                <td class="py-3 px-4 whitespace-nowrap" x-show="isColVisible('payment_method')">
                                     <span class="font-medium text-slate-700">{{ $pay->payment_method }}</span>
                                     @if($pay->bank_name)
                                         <span class="text-[10px] text-slate-400 block">{{ $pay->bank_name }}</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4">
+                                <td class="py-3 px-4" x-show="isColVisible('invoices')">
                                     <div class="flex flex-wrap gap-1">
                                         @foreach($pay->items as $item)
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] bg-slate-100 text-slate-700 rounded border border-slate-200 whitespace-nowrap" title="Dibayar: Rp {{ number_format($item->amount_paid, 0, ',', '.') }}">
@@ -209,10 +222,10 @@
                                         @endforeach
                                     </div>
                                 </td>
-                                <td class="py-3 px-4 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                                <td class="py-3 px-4 text-right font-mono font-bold text-emerald-700 whitespace-nowrap" x-show="isColVisible('total_amount')">
                                     Rp {{ number_format($pay->total_amount, 0, ',', '.') }}
                                 </td>
-                                <td class="py-3 px-4 text-center whitespace-nowrap">
+                                <td class="py-3 px-4 text-center whitespace-nowrap" x-show="isColVisible('attachment')">
                                     @if($pay->attachment_path)
                                         <a href="{{ route('storage.fallback', $pay->attachment_path) }}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -222,7 +235,7 @@
                                         <span class="text-slate-400 text-[11px]">-</span>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 text-right whitespace-nowrap">
+                                <td class="py-3 px-4 text-right whitespace-nowrap" x-show="isColVisible('actions')">
                                     @if(auth()->user()?->canWritePayment())
                                         <form action="{{ route('finance.payments.destroy', $pay->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus Pembayaran {{ $pay->payment_number }}? Status faktur terkait akan dikembalikan.');" class="inline">
                                             @csrf

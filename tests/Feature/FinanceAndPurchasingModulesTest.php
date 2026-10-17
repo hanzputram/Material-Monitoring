@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DeliveryOrder;
 use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\Project;
@@ -274,5 +275,147 @@ class FinanceAndPurchasingModulesTest extends TestCase
         $response->assertSee('2 Proyek');
         $response->assertSee('Rekap Pembelian Toko Lintas Proyek');
         $response->assertSee('Ada Hutang');
+    }
+
+    public function test_outstanding_po_dashboard_loads_and_displays_pending_po(): void
+    {
+        $project = Project::first();
+        $response = $this->get(route('procurement.outstanding-po', ['project_id' => $project->id]));
+        $response->assertStatus(200);
+        $response->assertSee('Monitoring PO Menggantung');
+        $response->assertSee('Total PO Menggantung');
+    }
+
+    public function test_received_do_number_cannot_be_reinput(): void
+    {
+        $project = Project::first();
+        $supplier = Supplier::first();
+        $material = Material::first();
+        $unit = Unit::first();
+
+        // 1. First DO submission
+        $file = UploadedFile::fake()->create('sj1.pdf', 100, 'application/pdf');
+        $postData = [
+            'project_id' => $project->id,
+            'supplier_id' => $supplier->id,
+            'do_number' => 'SJ-DUPLICATE-CHECK-001',
+            'do_date' => '2026-10-08',
+            'attachment' => $file,
+            'items' => [
+                [
+                    'material_id' => $material->id,
+                    'qty_received' => 5,
+                    'unit_id' => $unit->id,
+                ],
+            ],
+        ];
+
+        $response1 = $this->post(route('procurement.do.store'), $postData);
+        $response1->assertRedirect();
+        $this->assertDatabaseHas('delivery_orders', [
+            'project_id' => $project->id,
+            'do_number' => 'SJ-DUPLICATE-CHECK-001',
+        ]);
+
+        // 2. Second DO submission with the SAME do_number should be rejected
+        $file2 = UploadedFile::fake()->create('sj2.pdf', 100, 'application/pdf');
+        $postData['attachment'] = $file2;
+
+        $response2 = $this->post(route('procurement.do.store'), $postData);
+        $response2->assertSessionHas('error');
+        $this->assertEquals(1, DeliveryOrder::where('project_id', $project->id)->where('do_number', 'SJ-DUPLICATE-CHECK-001')->count());
+    }
+
+    public function test_used_do_number_is_excluded_from_scheduled_deliveries_in_do_index(): void
+    {
+        $project = Project::first();
+        $supplier = Supplier::first();
+        $material = Material::first();
+        $unit = Unit::first();
+
+        // Create PO with delivery_order_number
+        $po = PurchaseOrder::create([
+            'project_id' => $project->id,
+            'supplier_id' => $supplier->id,
+            'po_number' => 'PO-SCHEDULED-TEST-99',
+            'po_date' => '2026-10-01',
+            'status' => 'approved',
+            'delivery_order_number' => 'SJ-SCHEDULED-TEST-99',
+        ]);
+        $po->items()->create([
+            'material_id' => $material->id,
+            'qty_ordered' => 10,
+            'unit_id' => $unit->id,
+            'unit_price' => 50000,
+        ]);
+
+        // Before DO receipt: scheduledDeliveries MUST include it
+        $resBefore = $this->get(route('procurement.do.index', ['project_id' => $project->id]));
+        $scheduledBefore = collect($resBefore->viewData('scheduledDeliveries'))->pluck('do_number')->toArray();
+        $this->assertContains('SJ-SCHEDULED-TEST-99', $scheduledBefore);
+
+        // Record DO for this number
+        $file = UploadedFile::fake()->create('sj.pdf', 100, 'application/pdf');
+        $this->post(route('procurement.do.store'), [
+            'project_id' => $project->id,
+            'purchase_order_id' => $po->id,
+            'supplier_id' => $supplier->id,
+            'do_number' => 'SJ-SCHEDULED-TEST-99',
+            'do_date' => '2026-10-08',
+            'attachment' => $file,
+            'items' => [
+                [
+                    'material_id' => $material->id,
+                    'purchase_order_id' => $po->id,
+                    'qty_received' => 10,
+                    'unit_id' => $unit->id,
+                ],
+            ],
+        ]);
+
+        // After DO receipt: scheduledDeliveries MUST NOT include it anymore
+        $resAfter = $this->get(route('procurement.do.index', ['project_id' => $project->id]));
+        $scheduledAfter = collect($resAfter->viewData('scheduledDeliveries'))->pluck('do_number')->toArray();
+        $this->assertNotContains('SJ-SCHEDULED-TEST-99', $scheduledAfter);
+    }
+
+    public function test_updating_po_do_number_rejects_already_used_do_number(): void
+    {
+        $project = Project::first();
+        $supplier = Supplier::first();
+        $material = Material::first();
+        $unit = Unit::first();
+
+        // Create an existing DO
+        DeliveryOrder::create([
+            'project_id' => $project->id,
+            'supplier_id' => $supplier->id,
+            'do_number' => 'SJ-ALREADY-USED-001',
+            'do_date' => '2026-10-05',
+            'attachment_path' => 'delivery_orders/test.pdf',
+            'received_by' => auth()->id(),
+            'status' => 'validated',
+        ]);
+
+        $po = PurchaseOrder::create([
+            'project_id' => $project->id,
+            'supplier_id' => $supplier->id,
+            'po_number' => 'PO-UPDATE-DO-TEST',
+            'po_date' => '2026-10-01',
+            'status' => 'approved',
+        ]);
+
+        // Attempting to set an already used DO number should fail
+        $responseFail = $this->post(route('procurement.po.update_do', $po), [
+            'delivery_order_number' => 'SJ-ALREADY-USED-001',
+        ]);
+        $responseFail->assertSessionHas('error');
+
+        // Setting a new unused DO number should succeed
+        $responseSuccess = $this->post(route('procurement.po.update_do', $po), [
+            'delivery_order_number' => 'SJ-NEW-BRAND-002',
+        ]);
+        $responseSuccess->assertSessionHas('success');
+        $this->assertEquals('SJ-NEW-BRAND-002', $po->refresh()->delivery_order_number);
     }
 }

@@ -43,6 +43,24 @@ return new class extends Migration
             $table->index(['project_id', 'status']);
             $table->index(['project_id', 'worker_id']);
         });
+
+        // 3. Mandor Borongan (Pekerjaan Borongan Lump Sum)
+        Schema::create('mandor_borongans', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
+            $table->string('mandor_name', 255);
+            $table->string('mandor_phone', 50)->nullable();
+            $table->string('work_scope', 255)->nullable();
+            $table->string('spk_number', 100)->nullable();
+            $table->decimal('contract_amount', 15, 2)->default(0);
+            $table->decimal('paid_amount', 15, 2)->default(0);
+            $table->integer('progress_percent')->default(0);
+            $table->string('status', 50)->default('aktif');
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->text('notes')->nullable();
+            $table->timestamps();
+        });
     }
 
     /**
@@ -50,6 +68,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('mandor_borongans');
         Schema::dropIfExists('project_workers');
         Schema::dropIfExists('workers');
     }

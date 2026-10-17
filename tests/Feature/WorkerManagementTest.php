@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\MandorBorongan;
+use App\Models\MandorBoronganPanjar;
 use App\Models\Project;
 use App\Models\ProjectWorker;
 use App\Models\User;
@@ -42,9 +44,16 @@ class WorkerManagementTest extends TestCase
     {
         $response = $this->get(route('workers.index'));
         $response->assertStatus(200);
-        $response->assertSee('Master Pekerja &amp; Tukang', false);
-        $response->assertSee('Pekerja di Proyek Ini');
+        $response->assertSee('Mandor & Pekerjaan Borongan (LS)', false);
+        $response->assertSee('Pekerja Harian (Opsional)');
         $response->assertSee('Katalog Master Tenaga Kerja');
+        $response->assertSee('Potong Panjar Mandor');
+        $response->assertSee('Pemotongan Panjar Hasil Kontrak Mandor');
+        $response->assertSee('Pemotongan Panjar');
+        $response->assertSee('Nilai Kontrak Borongan');
+        $response->assertSee('x-data="workerManagementData()"', false);
+        $response->assertSee('function workerManagementData()', false);
+        $response->assertDontSee('0)?this.boronganList[0]');
     }
 
     public function test_master_worker_can_be_created(): void
@@ -216,5 +225,108 @@ class WorkerManagementTest extends TestCase
         $this->assertDatabaseMissing('project_workers', [
             'id' => $id,
         ]);
+    }
+
+    public function test_mandor_borongan_can_be_created_and_updated_with_panjar(): void
+    {
+        $project = Project::firstOrFail();
+
+        // 1. Create Borongan
+        $response = $this->post(route('workers.borongan.store'), [
+            'project_id' => $project->id,
+            'mandor_name' => 'Mandor Budi Santoso',
+            'mandor_phone' => '0812-3344-5566',
+            'work_scope' => 'Pekerjaan Borongan Pasang Bata & Plesteran',
+            'spk_number' => 'SPK/2026/BOR-01',
+            'contract_amount' => 100000000,
+            'panjar_amount' => 10000000,
+            'paid_amount' => 20000000,
+            'progress_percent' => 30,
+            'status' => 'active',
+            'start_date' => '2026-10-01',
+            'notes' => 'Termasuk bahan bantu',
+        ]);
+
+        $response->assertRedirect(route('workers.index', ['project_id' => $project->id, 'tab' => 'borongan']));
+
+        $borongan = MandorBorongan::where('spk_number', 'SPK/2026/BOR-01')->firstOrFail();
+        $this->assertEquals(100000000, (float) $borongan->contract_amount);
+        $this->assertEquals(10000000, (float) $borongan->panjar_amount);
+        $this->assertEquals(90000000, (float) $borongan->net_contract_amount);
+        $this->assertEquals(70000000, (float) $borongan->remaining_amount);
+
+        // 2. Update Borongan
+        $updateResponse = $this->put(route('workers.borongan.update', $borongan->id), [
+            'mandor_name' => 'Mandor Budi Santoso (Revisi)',
+            'mandor_phone' => '0812-3344-5566',
+            'work_scope' => 'Pekerjaan Borongan Pasang Bata & Plesteran Full',
+            'spk_number' => 'SPK/2026/BOR-01',
+            'contract_amount' => 120000000,
+            'panjar_amount' => 15000000,
+            'paid_amount' => 30000000,
+            'progress_percent' => 40,
+            'status' => 'active',
+        ]);
+
+        $updateResponse->assertRedirect(route('workers.index', ['project_id' => $project->id, 'tab' => 'borongan']));
+        $borongan->refresh();
+        $this->assertEquals(120000000, (float) $borongan->contract_amount);
+        $this->assertEquals(15000000, (float) $borongan->panjar_amount);
+        $this->assertEquals(105000000, (float) $borongan->net_contract_amount);
+        $this->assertEquals(75000000, (float) $borongan->remaining_amount);
+    }
+
+    public function test_mandor_borongan_panjar_can_be_stored_and_accumulated(): void
+    {
+        $project = Project::firstOrFail();
+        $borongan = MandorBorongan::create([
+            'project_id' => $project->id,
+            'mandor_name' => 'Mandor Ali',
+            'work_scope' => 'Pekerjaan Keramik Lantai',
+            'contract_amount' => 50000000,
+            'panjar_amount' => 0,
+            'paid_amount' => 0,
+            'progress_percent' => 0,
+            'status' => 'active',
+        ]);
+
+        // Simpan Panjar ke-1
+        $response1 = $this->post(route('workers.borongan.panjar.store'), [
+            'mandor_borongan_id' => $borongan->id,
+            'amount' => 5000000,
+            'panjar_date' => '2026-10-09',
+            'reference_no' => 'KSB-001',
+            'notes' => 'Panjar kasbon tukang termin 1',
+        ]);
+
+        $response1->assertRedirect(route('workers.index', ['project_id' => $project->id, 'tab' => 'borongan']));
+        $borongan->refresh();
+        $this->assertEquals(5000000, (float) $borongan->panjar_amount);
+        $this->assertEquals(45000000, (float) $borongan->net_contract_amount);
+        $this->assertEquals(45000000, (float) $borongan->remaining_amount);
+
+        // Simpan Panjar ke-2
+        $response2 = $this->post(route('workers.borongan.panjar.store'), [
+            'mandor_borongan_id' => $borongan->id,
+            'amount' => 3000000,
+            'panjar_date' => '2026-10-10',
+            'reference_no' => 'KSB-002',
+            'notes' => 'Panjar kasbon tukang termin 2',
+        ]);
+
+        $response2->assertRedirect(route('workers.index', ['project_id' => $project->id, 'tab' => 'borongan']));
+        $borongan->refresh();
+        $this->assertEquals(8000000, (float) $borongan->panjar_amount);
+        $this->assertEquals(42000000, (float) $borongan->net_contract_amount);
+        $this->assertEquals(42000000, (float) $borongan->remaining_amount);
+
+        // Hapus Panjar ke-1
+        $panjar1 = MandorBoronganPanjar::where('reference_no', 'KSB-001')->firstOrFail();
+        $destroyResponse = $this->delete(route('workers.borongan.panjar.destroy', $panjar1->id));
+        $destroyResponse->assertRedirect(route('workers.index', ['project_id' => $project->id, 'tab' => 'borongan']));
+
+        $borongan->refresh();
+        $this->assertEquals(3000000, (float) $borongan->panjar_amount);
+        $this->assertEquals(47000000, (float) $borongan->net_contract_amount);
     }
 }

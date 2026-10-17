@@ -42,6 +42,11 @@ class MaterialMasterSeeder extends Seeder
             ['code' => 'MAT-BIO-001', 'name' => 'Biofilter Septic Tank Biotech 2000 Liter', 'category' => 'bahan_jadi', 'unit' => 'Unit', 'price' => 14500000],
             ['code' => 'MAT-KUS-001', 'name' => 'Kusen Alumunium 4" Powder Coating', 'category' => 'bahan_jadi', 'unit' => 'M\'', 'price' => 125000],
             ['code' => 'MAT-PNT-001', 'name' => 'Daun Pintu Panel Engineering Wood', 'category' => 'bahan_jadi', 'unit' => 'Unit', 'price' => 1650000],
+            ['code' => 'OPS-KND-001', 'name' => 'Solar Industri (BBM Alat Berat & Truk)', 'category' => 'operasional_kendaraan', 'unit' => 'Ltr', 'price' => 15500],
+            ['code' => 'OPS-KND-002', 'name' => 'Oli Mesin Diesel Heavy Duty SAE 15W-40', 'category' => 'operasional_kendaraan', 'unit' => 'Ltr', 'price' => 45000],
+            ['code' => 'OPS-KND-003', 'name' => 'Sewa Dump Truck 24 M3 (Ritase/Hari)', 'category' => 'operasional_kendaraan', 'unit' => 'Unit', 'price' => 1800000],
+            ['code' => 'OPS-KND-004', 'name' => 'Servis Berkala & Ganti Filter Truk', 'category' => 'operasional_kendaraan', 'unit' => 'Set', 'price' => 850000],
+            ['code' => 'OPS-KND-005', 'name' => 'Sewa Mobil Pick Up GranMax Operasional', 'category' => 'operasional_kendaraan', 'unit' => 'Unit', 'price' => 450000],
         ];
 
         foreach ($materials as $m) {

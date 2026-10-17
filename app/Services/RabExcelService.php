@@ -23,6 +23,13 @@ class RabExcelService
      */
     public function generateTemplate(): Spreadsheet
     {
+        $v2Path = resource_path('templates/Template_RAB_Konstruksi_Baku_v2.xlsx');
+        if (file_exists($v2Path)) {
+            $reader = new Xlsx;
+
+            return $reader->load($v2Path);
+        }
+
         $spreadsheet = new Spreadsheet;
 
         // --- Sheet 1: Info Proyek ---

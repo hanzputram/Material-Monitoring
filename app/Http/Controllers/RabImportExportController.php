@@ -7,16 +7,28 @@ use App\Services\RabExcelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RabImportExportController extends Controller
 {
     public function __construct(protected RabExcelService $excelService) {}
 
-    public function downloadTemplate(): StreamedResponse
+    public function downloadTemplate(): BinaryFileResponse|StreamedResponse
     {
+        $templatePath = resource_path('templates/Template_RAB_Konstruksi_Baku_v2.xlsx');
+        if (file_exists($templatePath)) {
+            return response()->download(
+                $templatePath,
+                'Template_RAB_Konstruksi_Baku_v2.xlsx',
+                [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ]
+            );
+        }
+
         $spreadsheet = $this->excelService->generateTemplate();
-        $fileName = 'Template_RAB_Konstruksi_Baku.xlsx';
+        $fileName = 'Template_RAB_Konstruksi_Baku_v2.xlsx';
 
         return new StreamedResponse(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);

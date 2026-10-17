@@ -98,13 +98,18 @@ class RabBuilderController extends Controller
     public function updateNode(Request $request, RabNode $node)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50',
+            'code' => 'nullable|string|max:50',
             'name' => 'required|string|max:255',
         ]);
 
-        $node->update($validated);
+        if (empty($validated['code'])) {
+            $validated['code'] = $node->code;
+        }
 
-        return redirect()->back()->with('success', "Kategori '{$node->code}' berhasil diperbarui!");
+        $node->update($validated);
+        $node->project->recalculateAllSubtotals();
+
+        return redirect()->back()->with('success', "Kategori '{$node->code} - {$node->name}' berhasil diperbarui!");
     }
 
     public function destroyNode(RabNode $node)
@@ -141,7 +146,7 @@ class RabBuilderController extends Controller
         $validated['is_composite'] = false;
 
         $item = RabItem::create($validated);
-        $node->refreshSubtotal();
+        $node->project->recalculateAllSubtotals();
 
         return redirect()->route('rab.builder', ['project_id' => $node->project_id])
             ->with('success', "Item pekerjaan '{$item->name}' berhasil ditambahkan!");
@@ -150,26 +155,32 @@ class RabBuilderController extends Controller
     public function updateItem(Request $request, RabItem $item)
     {
         $validated = $request->validate([
-            'item_no' => 'required|string|max:50',
-            'name' => 'required|string',
+            'item_no' => 'nullable|string|max:50',
+            'name' => 'required|string|max:255',
             'volume' => 'required|numeric|min:0.0001',
             'unit_id' => 'required|exists:units,id',
             'unit_price' => 'required|numeric|min:0',
         ]);
 
+        if (empty($validated['item_no'])) {
+            $validated['item_no'] = $item->item_no;
+        }
+
         $validated['total_price'] = (float) $validated['volume'] * (float) $validated['unit_price'];
         $item->update($validated);
+        $item->rabNode->project->recalculateAllSubtotals();
 
         return redirect()->back()->with('success', "Item pekerjaan '{$item->name}' berhasil diperbarui!");
     }
 
     public function destroyItem(RabItem $item)
     {
-        $projectId = $item->rabNode->project_id;
+        $project = $item->rabNode->project;
         $name = $item->name;
         $item->delete();
+        $project->recalculateAllSubtotals();
 
-        return redirect()->route('rab.builder', ['project_id' => $projectId])
+        return redirect()->route('rab.builder', ['project_id' => $project->id])
             ->with('success', "Item '{$name}' berhasil dihapus.");
     }
 
@@ -219,6 +230,23 @@ class RabBuilderController extends Controller
 
         return redirect()->back()
             ->with('success', "Rincian breakdown '{$sub->material?->name}' berhasil ditambahkan ke material hasil jadi '{$material->material?->name}'!");
+    }
+
+    public function updateItemMaterial(Request $request, RabItemMaterial $material)
+    {
+        $validated = $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'volume' => 'required|numeric|min:0.0001',
+            'unit_id' => 'required|exists:units,id',
+            'unit_price' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $validated['total_price'] = (float) $validated['volume'] * (float) $validated['unit_price'];
+        $material->update($validated);
+
+        return redirect()->back()
+            ->with('success', "Data material '{$material->material?->name}' berhasil diperbarui!");
     }
 
     public function destroyItemMaterial(RabItemMaterial $material)
