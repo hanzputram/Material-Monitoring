@@ -106,7 +106,7 @@
         </div>
 
         <div class="overflow-x-auto max-h-[500px]">
-            <table class="w-full text-left text-xs table-clean">
+            <table class="w-full text-left text-xs table-clean min-w-[850px]">
                 <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0 uppercase tracking-wider text-[11px] z-10">
                     <tr>
                         <th class="py-3 px-3 w-16 text-center">Row</th>

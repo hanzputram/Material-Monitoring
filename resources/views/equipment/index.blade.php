@@ -157,14 +157,14 @@
     </div>
 
     <!-- 2. TAB SWITCHER -->
-    <div class="border-b border-slate-200">
-        <nav class="flex space-x-6">
+    <div class="border-b border-slate-200 overflow-x-auto tab-scroll-container">
+        <nav class="flex space-x-4 sm:space-x-6 min-w-max pb-px">
             <!-- TAB 1: CRUD Master Katalog Alat & Mesin -->
             <button type="button" @click="activeTab = 'master'"
                     :class="activeTab === 'master' 
                         ? 'border-blue-600 text-blue-600 font-bold border-b-2 pb-3.5' 
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-medium pb-3.5 border-b-2'"
-                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none">
+                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none whitespace-nowrap shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <span>Katalog & Master Alat Mesin</span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'master' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ $stats['total_equipment'] }}</span>
@@ -175,7 +175,7 @@
                     :class="activeTab === 'fast_input' 
                         ? 'border-blue-600 text-blue-600 font-bold border-b-2 pb-3.5' 
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-medium pb-3.5 border-b-2'"
-                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none">
+                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none whitespace-nowrap shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 <span>Alokasi Cepat ke Proyek (Fast Input)</span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'fast_input' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ $catalog->count() }}</span>
@@ -186,7 +186,7 @@
                     :class="activeTab === 'active' 
                         ? 'border-blue-600 text-blue-600 font-bold border-b-2 pb-3.5' 
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-medium pb-3.5 border-b-2'"
-                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none">
+                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none whitespace-nowrap shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 <span>Alat Aktif di Proyek</span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">{{ $stats['active_in_project'] }}</span>
@@ -744,8 +744,8 @@
                 @csrf
                 @method('PUT')
 
-                <div class="p-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 sm:p-6 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block font-semibold text-slate-700 text-xs mb-1">Kuantiti (Qty) <span class="text-rose-500">*</span></label>
                             <input type="number" name="qty" x-model="allocForm.qty" required min="1"
@@ -759,7 +759,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block font-semibold text-slate-700 text-xs mb-1">Kepemilikan</label>
                             <select name="source" x-model="allocForm.source" class="select-clean w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl font-medium">

@@ -140,7 +140,7 @@
 
         <!-- Supplier Table -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm border-collapse table-clean">
+            <table class="w-full text-left text-sm border-collapse table-clean min-w-[800px]">
                 <thead>
                     <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                         <th class="py-3 px-5">Nama Supplier / Rekanan</th>

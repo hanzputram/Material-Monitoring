@@ -235,13 +235,13 @@ function materialsPage() {
     </div>
 
     <!-- 2. ELEGANT UNDERLINE TAB SWITCHER -->
-    <div class="border-b border-slate-200">
-        <nav class="flex space-x-6">
+    <div class="border-b border-slate-200 overflow-x-auto tab-scroll-container">
+        <nav class="flex space-x-4 sm:space-x-6 min-w-max pb-px">
             <button type="button" @click="activeTab = 'materials'"
                     :class="activeTab === 'materials' 
                         ? 'border-blue-600 text-blue-600 font-bold border-b-2 pb-3.5' 
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-medium pb-3.5 border-b-2'"
-                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none">
+                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none whitespace-nowrap shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                 <span>Katalog Material & Item</span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'materials' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ $stats['total_materials'] }}</span>
@@ -251,7 +251,7 @@ function materialsPage() {
                     :class="activeTab === 'units' 
                         ? 'border-blue-600 text-blue-600 font-bold border-b-2 pb-3.5' 
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-medium pb-3.5 border-b-2'"
-                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none">
+                    class="inline-flex items-center gap-2 text-sm transition-all cursor-pointer focus:outline-none whitespace-nowrap shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 <span>Master Satuan (Units)</span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'units' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ $stats['total_units'] }}</span>

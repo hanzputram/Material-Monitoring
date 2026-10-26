@@ -37,7 +37,7 @@
             </div>
 
             <!-- Quick Action Toolbar -->
-            <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <div class="flex items-center gap-2 overflow-x-auto tab-scroll-container pb-1 sm:pb-0 sm:flex-wrap shrink-0 max-w-full">
                 <a href="{{ route('rab.builder') }}" 
                    class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl shadow-sm shadow-blue-500/20 transition-all whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>

@@ -106,7 +106,7 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
+            <table class="w-full text-left text-xs border-collapse min-w-[850px]">
                 <thead class="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                     <tr>
                         <th class="py-3.5 px-4 align-middle">Nama Staf</th>

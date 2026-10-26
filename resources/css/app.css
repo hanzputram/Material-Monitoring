@@ -195,35 +195,44 @@ select option:checked {
    RESPONSIVE UTILITIES
    ============================ */
 
-/* Touch-friendly sizing for mobile */
+/* Touch-friendly sizing & iOS Zoom Prevention for mobile */
 @media (max-width: 639px) {
-    /* Larger tap targets on mobile */
-    button, a.inline-flex, [type="submit"] {
-        min-height: 40px;
+    /* Prevent iOS Safari auto-zoom on input focus */
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+        font-size: 16px !important;
     }
 
-    /* Reduce main content padding on mobile */
+    /* Standard touch target height */
+    button, a.inline-flex, [type="submit"] {
+        min-height: 42px;
+    }
+
+    /* Reduce main content padding on mobile & allow bottom-bar clearance */
     main {
-        padding: 1rem !important;
+        padding: 0.875rem !important;
+        padding-bottom: 5.5rem !important;
     }
 
     /* Header compact on mobile */
     header {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 0.875rem !important;
+        padding-right: 0.875rem !important;
     }
 
     /* Cards tighter on mobile */
     .card-clean {
-        border-radius: 0.625rem;
+        border-radius: 0.75rem;
     }
 
-    /* Table horizontal scroll hint */
+    /* Table horizontal scroll touch momentum */
     .overflow-x-auto {
         -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
     }
 
-    /* Table min-width for horizontal scroll on mobile */
+    /* Table min-width for comfortable horizontal scroll on mobile */
     .table-clean {
         min-width: 640px;
     }
@@ -231,19 +240,23 @@ select option:checked {
     /* Compact badge on mobile */
     .badge-clean {
         font-size: 0.6875rem;
-        padding: 0.1875rem 0.5rem;
+        padding: 0.25rem 0.5rem;
     }
 
-    /* Modal full-width on mobile */
+    /* Modal full-width & max height scrolling on mobile */
     .fixed.inset-0 .max-w-xl,
     .fixed.inset-0 .max-w-lg,
-    .fixed.inset-0 .max-w-2xl {
+    .fixed.inset-0 .max-w-2xl,
+    .fixed.inset-0 .max-w-3xl,
+    .fixed.inset-0 .max-w-4xl {
         max-width: calc(100vw - 1rem) !important;
         margin-left: 0.5rem;
         margin-right: 0.5rem;
+        max-height: calc(100vh - 2rem) !important;
+        overflow-y: auto !important;
     }
 
-    /* Stack modal forms */
+    /* Stack modal forms cleanly on small screens */
     .fixed.inset-0 .grid-cols-2 {
         grid-template-columns: 1fr !important;
     }
@@ -274,13 +287,15 @@ select option:checked {
 @media (min-width: 640px) and (max-width: 1023px) {
     main {
         padding: 1.25rem !important;
+        padding-bottom: 5.5rem !important;
     }
 }
 
-/* Ensure horizontal scroll hint with gradient */
+/* Ensure horizontal scroll styling */
 .overflow-x-auto {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Responsive tab bar - horizontal scroll */
@@ -289,15 +304,16 @@ select option:checked {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    white-space: nowrap;
 }
 .tab-scroll-container::-webkit-scrollbar {
     display: none;
 }
 
-/* Safe area padding for notched devices */
+/* Safe area padding for modern notched devices */
 @supports (padding: env(safe-area-inset-bottom)) {
-    body {
-        padding-bottom: env(safe-area-inset-bottom);
+    .bottom-nav-safe {
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
     }
 }
 

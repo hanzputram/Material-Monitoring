@@ -1,5 +1,5 @@
 <div class="overflow-x-auto rounded-xl border border-slate-200">
-    <table class="w-full text-left text-xs table-clean">
+    <table class="w-full text-left text-xs table-clean min-w-[680px]">
         <thead class="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
             <tr>
                 <th class="py-2.5 px-4 w-16">No.</th>

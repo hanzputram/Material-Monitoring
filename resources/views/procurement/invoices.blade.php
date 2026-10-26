@@ -206,7 +206,7 @@
                                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono font-bold">
                             </div>
 
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label class="block font-bold text-slate-700 mb-1">Tanggal Invoice <span class="text-rose-500">*</span></label>
                                     <input type="date" name="invoice_date" value="{{ date('Y-m-d') }}" required 

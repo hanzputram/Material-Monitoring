@@ -265,7 +265,7 @@
          class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" 
          style="display: none;">
         
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4" @click.away="showPaymentModal = false">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto" @click.away="showPaymentModal = false">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div class="flex items-center gap-2.5">
                     <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
@@ -320,8 +320,8 @@
                         Tidak ada tagihan tertunggak untuk supplier ini pada proyek ini (Semua faktur telah lunas).
                     </div>
 
-                    <div x-show="selectedSupplierId && filteredInvoices.length > 0" class="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
-                        <table class="w-full text-left text-xs">
+                    <div x-show="selectedSupplierId && filteredInvoices.length > 0" class="border border-slate-200 rounded-xl overflow-x-auto max-h-56 overflow-y-auto">
+                        <table class="w-full text-left text-xs min-w-[500px]">
                             <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase">
                                 <tr>
                                     <th class="py-2 px-3 w-10 text-center">Pilih</th>

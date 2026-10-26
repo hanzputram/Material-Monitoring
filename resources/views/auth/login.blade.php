@@ -57,6 +57,11 @@
             transition: all 0.2s ease;
             box-sizing: border-box;
         }
+        @media (max-width: 639px) {
+            .login-input-field {
+                font-size: 16px !important;
+            }
+        }
         .login-input-field:focus {
             outline: none;
             background-color: #FFFFFF;

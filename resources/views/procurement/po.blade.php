@@ -168,7 +168,7 @@
     <div x-show="showDetailModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showDetailModal = false"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-3xl p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-3xl p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                     <div>
@@ -181,7 +181,7 @@
 
                 <div class="space-y-4">
                     <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                        <table class="w-full text-left text-xs">
+                        <table class="w-full text-left text-xs min-w-[600px]">
                             <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                                 <tr>
                                     <th class="py-2.5 px-3">No</th>
@@ -265,7 +265,7 @@
         <div x-show="showPoModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showPoModal = false"></div>
             <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-                <div class="relative w-full max-w-3xl p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                <div class="relative w-full max-w-3xl p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                      @click.stop
                      x-data="{
                         materials: {{ Js::from($materials->map(fn($m) => [
@@ -550,7 +550,7 @@
                                                 </div>
 
                                                 <!-- Qty Ordered (2 cols) -->
-                                                <div class="col-span-4 sm:col-span-2">
+                                                <div class="col-span-6 sm:col-span-2">
                                                     <label class="block text-[10px] font-bold text-slate-500 mb-0.5 sm:hidden">Kuantiti</label>
                                                     <input type="number" step="any" :name="'items[' + idx + '][qty_ordered]'" 
                                                            x-model="it.qty_ordered"
@@ -558,7 +558,7 @@
                                                 </div>
 
                                                 <!-- Satuan (2 cols) -->
-                                                <div class="col-span-4 sm:col-span-2 relative">
+                                                <div class="col-span-6 sm:col-span-2 relative">
                                                     <label class="block text-[10px] font-bold text-slate-500 mb-0.5 sm:hidden">Satuan</label>
                                                     <input type="hidden" :name="'items[' + idx + '][unit_id]'" :value="it.unit_id">
                                                     <button type="button" 
@@ -588,14 +588,13 @@
                                                                         </svg>
                                                                     </template>
                                                                 </div>
-                              
-                              </template>
+                                                            </template>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <!-- Unit Price (3 cols) -->
-                                                <div class="col-span-4 sm:col-span-3">
+                                                <div class="col-span-12 sm:col-span-3">
                                                     <label class="block text-[10px] font-bold text-slate-500 mb-0.5 sm:hidden">Harga Satuan (Rp)</label>
                                                     <input type="number" step="any" :name="'items[' + idx + '][unit_price]'" 
                                                            x-model="it.unit_price"
@@ -634,7 +633,7 @@
         <div x-show="showUpdateDoModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showUpdateDoModal = false"></div>
             <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-                <div class="relative w-full max-w-md p-6 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                <div class="relative w-full max-w-md p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                      @click.stop>
                     <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                         <div class="flex items-center gap-2.5">

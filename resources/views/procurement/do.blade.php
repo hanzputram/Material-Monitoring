@@ -183,7 +183,7 @@
         <div x-show="showDoModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showDoModal = false"></div>
             <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-                <div class="relative w-full max-w-3xl p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+                <div class="relative w-full max-w-3xl p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                      @click.stop
                      x-data="{
                         materials: {{ Js::from($materials->map(fn($m) => [
@@ -418,8 +418,8 @@
                                         <div class="grid grid-cols-12 gap-2 items-center bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs">
                                             <input type="hidden" :name="'items[' + idx + '][purchase_order_id]'" :value="it.purchase_order_id || selectedPoId">
 
-                                            <!-- Material (col-span-6) -->
-                                            <div class="col-span-6 relative">
+                                            <!-- Material (col-span-12 sm:col-span-6) -->
+                                            <div class="col-span-12 sm:col-span-6 relative">
                                                 <input type="hidden" :name="'items[' + idx + '][material_id]'" :value="it.material_id">
                                                 <button type="button" 
                                                         @click="openMaterialIdx = (openMaterialIdx === idx ? null : idx); openUnitIdx = null"
@@ -458,15 +458,15 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Qty Received (col-span-3) -->
-                                            <div class="col-span-3">
+                                            <!-- Qty Received (col-span-5 sm:col-span-3) -->
+                                            <div class="col-span-5 sm:col-span-3">
                                                 <input type="number" step="any" :name="'items[' + idx + '][qty_received]'" 
                                                        x-model="it.qty_received"
                                                        placeholder="Kuantiti Fisik" required class="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500">
                                             </div>
 
-                                            <!-- Satuan (col-span-2) -->
-                                            <div class="col-span-2 relative">
+                                            <!-- Satuan (col-span-5 sm:col-span-2) -->
+                                            <div class="col-span-5 sm:col-span-2 relative">
                                                 <input type="hidden" :name="'items[' + idx + '][unit_id]'" :value="it.unit_id">
                                                 <button type="button" 
                                                         @click="openUnitIdx = (openUnitIdx === idx ? null : idx); openMaterialIdx = null"
@@ -500,8 +500,8 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Remove (col-span-1) -->
-                                            <div class="col-span-1 text-center">
+                                            <!-- Remove (col-span-2 sm:col-span-1) -->
+                                            <div class="col-span-2 sm:col-span-1 text-center">
                                                 <button type="button" @click="removeItem(idx)" 
                                                         class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center mx-auto transition-colors cursor-pointer" 
                                                         title="Hapus baris">

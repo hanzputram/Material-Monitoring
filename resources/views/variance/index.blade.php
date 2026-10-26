@@ -382,7 +382,7 @@
     <div x-show="showPengawasModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showPengawasModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-md p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-md p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <form :action="'{{ url('/variance') }}/' + activeValId + '/pengawas'" method="POST">
                     @csrf
@@ -431,7 +431,7 @@
     <div x-show="showPurchasingModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showPurchasingModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-md p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-md p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <form :action="'{{ url('/variance') }}/' + activeValId + '/purchasing'" method="POST">
                     @csrf

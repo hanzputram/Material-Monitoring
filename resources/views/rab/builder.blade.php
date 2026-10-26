@@ -235,7 +235,7 @@
     <div x-show="showNodeModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showNodeModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-md p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-md p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <form action="{{ route('rab.nodes.store') }}" method="POST">
                     @csrf
@@ -275,7 +275,7 @@
     <div x-show="showItemModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showItemModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-lg p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop
                  x-data="{ vol: 1, price: 0, get total() { return (this.vol * this.price).toFixed(2); } }">
                 <form action="{{ route('rab.items.store') }}" method="POST">
@@ -348,7 +348,7 @@
     <div x-show="showBomModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showBomModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-lg p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop
                  x-data="{ bomVol: 1, bomPrice: 0, get bomTotal() { return (this.bomVol * this.bomPrice).toFixed(2); } }">
                 <form :action="'{{ url('/rab/items') }}/' + bomModal.rab_item_id + '/material'" method="POST">
@@ -420,7 +420,7 @@
     <div x-show="showCloneBomModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showCloneBomModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-md p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-md p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <form :action="'{{ url('/rab/items') }}/' + cloneModal.target_item_id + '/clone-bom'" method="POST">
                     @csrf
@@ -460,7 +460,7 @@
     <div x-show="showBreakdownModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showBreakdownModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-lg p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop
                  x-data="{ subVol: 1, subPrice: 0, get subTotal() { return (this.subVol * this.subPrice).toFixed(2); } }">
                 <form :action="'{{ url('/rab/materials') }}/' + breakdownModal.material_id + '/breakdown'" method="POST">
@@ -550,7 +550,7 @@
     <div x-show="showEditNodeModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showEditNodeModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-md p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-md p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <form :action="editNodeModal.action" method="POST">
                     @csrf
@@ -594,7 +594,7 @@
     <div x-show="showEditItemModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showEditItemModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-lg p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <form :action="editItemModal.action" method="POST">
                     @csrf
@@ -669,7 +669,7 @@
     <div x-show="showEditBomModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showEditBomModal = false" aria-hidden="true"></div>
         <div class="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
-            <div class="relative w-full max-w-lg p-6 my-8 text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
+            <div class="relative w-full max-w-lg p-4 sm:p-6 my-4 sm:my-8 max-h-[90vh] overflow-y-auto text-left bg-white rounded-2xl shadow-2xl border border-slate-200 pointer-events-auto transform transition-all"
                  @click.stop>
                 <form :action="editBomModal.action" method="POST">
                     @csrf
