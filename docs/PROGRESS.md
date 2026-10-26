@@ -1,10 +1,16 @@
 # Project Progress & Memory: Material-Monitoring
 
 ## Status Terakhir (2026-10-26)
-- **Status Sesi**: Penghapusan total modul dan fungsi Down Payment (Uang Muka) selesai terverifikasi.
-- **Hasil Akhir Test Suite**: `php artisan test --compact` -> **64 tests passed, 292 assertions** (0 failed, 0 regressions).
+- **Status Sesi**: Patch keamanan PHP2Shell (PHP 8.5.12) dan pembersihan data dummy proyek/transaksi selesai terverifikasi.
+- **Hasil Akhir Test Suite**: `php artisan test --compact` -> **64 tests passed, 294 assertions** (0 failed, 0 regressions).
 - **Hasil Akhir Asset Build**: `npm run build` -> Vite v8 build sukses (1.44s).
 - **Code Style**: `vendor/bin/pint --format agent` -> 100% passed.
+
+## Patch Keamanan PHP2Shell & Pembersihan Data Dummy
+- **PHP 8.5.12**: Upgrade runtime PHP dari 8.5.10 ke 8.5.12 via Scoop untuk mitigasi CVE-2026-109618 & CVE-2026-109619.
+- **php.ini Hardening**: Menonaktifkan `session.upload_progress.enabled = Off` pada konfigurasi PHP aktif.
+- **Pembersihan Database Dummy**: Menghapus seluruh record proyek sample & transaksi dummy (proyek, RAB, PO, DO, invoice, realisasi, alert, alokasi pekerja/alat, pembayaran). Mempertahankan data master (satuan, katalog material, katalog alat, role & user).
+- **DatabaseSeeder**: Menonaktifkan pemanggilan `SampleProjectSeeder` agar data dummy tidak terisi kembali saat `db:seed` dijalankan.
 
 ## Perintah Penting
 - **Dev**: `composer run dev`

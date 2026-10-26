@@ -17,6 +17,7 @@ class ExampleTest extends TestCase
         $user = User::first();
         $response = $this->actingAs($user)->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect(route('projects.create'));
+        $this->actingAs($user)->get(route('projects.create'))->assertStatus(200);
     }
 }

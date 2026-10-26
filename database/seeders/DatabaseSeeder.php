@@ -13,7 +13,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             EquipmentMasterSeeder::class,
             MaterialMasterSeeder::class,
-            SampleProjectSeeder::class,
+            // SampleProjectSeeder::class, // Dinonaktifkan: data dummy proyek sample
             WorkerSeeder::class,
         ]);
     }
