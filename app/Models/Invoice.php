@@ -89,9 +89,9 @@ class Invoice extends Model
         $totalPaid = (float) $this->paymentItems()->sum('amount_paid');
         $this->paid_amount = $totalPaid;
 
-        if ($totalPaid >= $this->net_amount && $this->net_amount > 0) {
+        if ($totalPaid >= $this->net_amount && ($this->net_amount > 0 || (float) ($this->down_payment_amount ?? 0) > 0 || (float) $this->amount == 0)) {
             $this->payment_status = 'paid';
-        } elseif ($totalPaid > 0) {
+        } elseif ($totalPaid > 0 || (float) ($this->down_payment_amount ?? 0) > 0) {
             $this->payment_status = 'partial';
         } else {
             $this->payment_status = 'unpaid';
