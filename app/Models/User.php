@@ -245,7 +245,7 @@ class User extends Authenticatable
             'payment_write', 'payment.write' => $this->canWritePayment(),
             'return_read', 'return.read' => $this->canReadReturn(),
             'return_write', 'return.write' => $this->canWriteReturn(),
-            'procurement' => $this->canReadPo() || $this->canReadDo() || $this->canReadReturn(),
+            'procurement' => $this->canReadPo() || $this->canReadDo() || $this->canReadInvoice() || $this->canReadReturn(),
             'finance' => $this->canReadInvoice() || $this->canReadDownPayment() || $this->canReadPayment(),
             default => $this->hasRawPermission($module),
         };
