@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Material;
+use App\Models\MaterialRealization;
 use App\Models\Project;
 use App\Models\RabItem;
 use App\Models\RabItemMaterial;
@@ -118,6 +119,7 @@ class RabBuilderController extends Controller
         $name = $node->name;
         $node->delete();
         $project->recalculateAllSubtotals();
+        MaterialRealization::recalculateAllForProject($project->id);
 
         return redirect()->back()->with('success', "Kategori '{$name}' berhasil dihapus.");
     }
@@ -179,6 +181,7 @@ class RabBuilderController extends Controller
         $name = $item->name;
         $item->delete();
         $project->recalculateAllSubtotals();
+        MaterialRealization::recalculateAllForProject($project->id);
 
         return redirect()->route('rab.builder', ['project_id' => $project->id])
             ->with('success', "Item '{$name}' berhasil dihapus.");
@@ -252,8 +255,12 @@ class RabBuilderController extends Controller
     public function destroyItemMaterial(RabItemMaterial $material)
     {
         $item = $material->rabItem;
+        $projectId = $item?->rabNode?->project_id;
         $name = $material->material?->name ?? 'Material';
         $material->delete();
+        if ($projectId) {
+            MaterialRealization::recalculateAllForProject($projectId);
+        }
 
         return redirect()->back()
             ->with('success', "Breakdown material '{$name}' berhasil dihapus.");

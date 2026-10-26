@@ -22,6 +22,15 @@ class RabNode extends Model
         'subtotal_cache' => 'decimal:2',
     ];
 
+    protected static function booted()
+    {
+        static::deleted(function ($node) {
+            if ($node->project_id) {
+                MaterialRealization::recalculateAllForProject($node->project_id);
+            }
+        });
+    }
+
     public function project()
     {
         return $this->belongsTo(Project::class);

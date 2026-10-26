@@ -45,10 +45,14 @@ class RabItem extends Model
         });
 
         static::deleted(function ($item) {
+            $projectId = $item->rabNode?->project_id;
             if ($item->rabNode) {
                 $item->rabNode->refreshSubtotal();
             }
             CostRealization::where('rab_item_id', $item->id)->delete();
+            if ($projectId) {
+                MaterialRealization::recalculateAllForProject($projectId);
+            }
         });
     }
 
