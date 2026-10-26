@@ -9,7 +9,6 @@ use App\Http\Controllers\FinanceSummaryController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\ProcurementController;
 use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\PurchaseDownPaymentController;
 use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\RabBuilderController;
@@ -109,10 +108,6 @@ Route::middleware('auth')->group(function () {
 
     // 5.1 Modul Keuangan & Pembayaran
     Route::prefix('finance')->name('finance.')->group(function () {
-        // Uang Muka Pembelian (Purchase Down Payment)
-        Route::get('/down-payments', [PurchaseDownPaymentController::class, 'index'])->middleware('module:down_payment_read')->name('down-payments.index');
-        Route::post('/down-payments', [PurchaseDownPaymentController::class, 'store'])->middleware('module:down_payment_write')->name('down-payments.store');
-        Route::delete('/down-payments/{purchaseDownPayment}', [PurchaseDownPaymentController::class, 'destroy'])->middleware('module:down_payment_write')->name('down-payments.destroy');
 
         // Faktur Pembelian (Alias ke Invoices)
         Route::get('/invoices', [ProcurementController::class, 'invoiceIndex'])->middleware('module:invoice_read')->name('invoices.index');

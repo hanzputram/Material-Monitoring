@@ -30,9 +30,8 @@
    - Delivery Order (DO Lapangan): Penerimaan barang multi-PO, update status barang masuk, sinkronisasi otomatis ke `MaterialRealization`.
    - Faktur / Invoices: Pencatatan tagihan supplier berdasarkan PO & DO.
    - Retur Pembelian (Purchase Return): Pengembalian barang cacat/lebih ke supplier.
-6. **Finance & Pembayaran (`PurchaseDownPaymentController`, `PurchasePaymentController`, `FinanceSummaryController`)**:
-   - Uang Muka Pembelian (Purchase Down Payment).
-   - Pembayaran Tagihan Supplier (Purchase Payment / Settlement) potong DP.
+6. **Finance & Pembayaran (`PurchasePaymentController`, `FinanceSummaryController`)**:
+   - Pembayaran Tagihan Supplier (Purchase Payment / Settlement).
    - Supplier Summary: Rekapitulasi transaksi, hutang, dan pembayaran per toko / supplier lintas proyek.
 7. **Variance & Approval (`VarianceValidationController`)**:
    - Validasi selisih/varian jika realisasi melebihi toleransi RAB.
@@ -47,13 +46,12 @@
    - Buat PO ke Supplier dari referensi Item RAB & Material.
    - DO diterima di lapangan -> memvalidasi fisik barang -> otomatis mencatat atau memperbarui `MaterialRealization` & `DeliveryOrderItem`.
    - Invoice dicatat dari PO/DO yang valid.
-3. **Finance (DP & Payment)**:
-   - PO dapat dibayar DP (PurchaseDownPayment).
-   - Invoice dilunasi melalui PurchasePayment dengan opsional pemotongan DP terkait.
+3. **Finance (Payment)**:
+   - Invoice tagihan supplier dilunasi langsung melalui transaksi PurchasePayment.
 4. **Monitoring & Variance**:
    - Akumulasi kuantitas realisasi dibandingkan dengan RAB. Jika melewati threshold proyek, buat `MaterialVarianceValidation` dan `Alert`.
    - Dashboard menghitung deviasi volume dan cost realization real-time.
 
 ## 5. Tempat Penyimpanan
-- **Database**: Tabel relasional (`projects`, `rab_nodes`, `rab_items`, `rab_item_materials`, `materials`, `units`, `suppliers`, `purchase_orders`, `purchase_order_items`, `delivery_orders`, `delivery_order_items`, `invoices`, `purchase_down_payments`, `purchase_payments`, `purchase_payment_items`, `purchase_returns`, `purchase_return_items`, `material_realizations`, `material_variance_validations`, `equipment_masters`, `equipment_categories`, `project_equipment`, `workers`, `project_workers`, `mandor_borongans`, `mandor_borongan_panjars`, `alerts`, `cost_realizations`).
+- **Database**: Tabel relasional (`projects`, `rab_nodes`, `rab_items`, `rab_item_materials`, `materials`, `units`, `suppliers`, `purchase_orders`, `purchase_order_items`, `delivery_orders`, `delivery_order_items`, `invoices`, `purchase_payments`, `purchase_payment_items`, `purchase_returns`, `purchase_return_items`, `material_realizations`, `material_variance_validations`, `equipment_masters`, `equipment_categories`, `project_equipment`, `workers`, `project_workers`, `mandor_borongans`, `mandor_borongan_panjars`, `alerts`, `cost_realizations`).
 - **File Storage**: Dokumen PO PDF, foto bukti DO, nota invoice, slip pembayaran, dan attachment retur di `storage/app/public/` (diakses via `/storage/{path}`).

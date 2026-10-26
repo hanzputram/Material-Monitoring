@@ -8,7 +8,6 @@ use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialRealization;
 use App\Models\Project;
-use App\Models\PurchaseDownPayment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\RabItem;
@@ -470,17 +469,12 @@ class ProcurementController extends Controller
         }
 
         $suppliers = Supplier::orderBy('name')->get();
-        $invoices = Invoice::with(['supplier', 'validator', 'purchaseOrder', 'downPayment', 'payments'])
+        $invoices = Invoice::with(['supplier', 'validator', 'purchaseOrder', 'payments'])
             ->where('project_id', $project->id)
             ->orderByDesc('invoice_date')
             ->get();
 
         $purchaseOrders = PurchaseOrder::where('project_id', $project->id)->orderByDesc('po_date')->get();
-
-        // Uang muka yang masih tersedia untuk diaplikasikan ke faktur
-        $availableDownPayments = PurchaseDownPayment::where('project_id', $project->id)
-            ->where('status', 'paid')
-            ->get();
 
         // Badge counters
         $poCount = Auth::user()->canReadPo()
@@ -496,7 +490,6 @@ class ProcurementController extends Controller
             'suppliers',
             'invoices',
             'purchaseOrders',
-            'availableDownPayments',
             'poCount',
             'doCount'
         ));
@@ -516,26 +509,11 @@ class ProcurementController extends Controller
             'invoice_date' => 'required|date',
             'due_date' => 'nullable|date',
             'amount' => 'required|numeric|min:0',
-            'down_payment_id' => 'nullable|exists:purchase_down_payments,id',
             'attachment' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // Mandatory proof
             'notes' => 'nullable|string',
         ]);
 
         $filePath = $request->file('attachment')->store('invoices', 'public');
-
-        $dp = null;
-        $dpAmount = 0;
-        if (! empty($validated['down_payment_id'])) {
-            $dp = PurchaseDownPayment::find($validated['down_payment_id']);
-            if ($dp) {
-                $dpAmount = min((float) $validated['amount'], (float) $dp->amount);
-                $dp->status = 'applied';
-                $dp->save();
-            }
-        }
-
-        $netAmount = max(0, (float) $validated['amount'] - $dpAmount);
-        $paymentStatus = ($netAmount <= 0) ? 'paid' : 'unpaid';
 
         $invoice = Invoice::create([
             'project_id' => $validated['project_id'],
@@ -545,10 +523,8 @@ class ProcurementController extends Controller
             'invoice_date' => $validated['invoice_date'],
             'due_date' => $validated['due_date'] ?? null,
             'amount' => $validated['amount'],
-            'down_payment_id' => $dp?->id,
-            'down_payment_amount' => $dpAmount,
             'paid_amount' => 0,
-            'payment_status' => $paymentStatus,
+            'payment_status' => 'unpaid',
             'attachment_path' => $filePath,
             'validated_by' => Auth::id(),
             'status' => 'validated',
@@ -571,12 +547,6 @@ class ProcurementController extends Controller
 
         $projectId = $invoice->project_id;
         $invoiceNumber = $invoice->invoice_number;
-
-        // Jika memiliki DP yang terikat, kembalikan status DP menjadi 'paid' (belum diaplikasikan)
-        if ($invoice->down_payment_id && $invoice->downPayment) {
-            $invoice->downPayment->status = 'paid';
-            $invoice->downPayment->save();
-        }
 
         if ($invoice->attachment_path && Storage::disk('public')->exists($invoice->attachment_path)) {
             Storage::disk('public')->delete($invoice->attachment_path);

@@ -23,9 +23,8 @@ Status awal sebelum audit adalah `Implemented` (belum diverifikasi mendalam per 
 | F-016 | Delivery Order (DO) Lapangan | Catat Surat Jalan Lapangan, Multi-PO, Update Realisasi Material | `ProcurementController@storeDo`, `destroyDo` | `delivery_orders`, `delivery_order_items`, `material_realizations` | Implemented |
 | F-017 | Invoice Tagihan | Catat Faktur Pembelian (PO/DO), Hapus Invoice | `ProcurementController@storeInvoice`, `destroyInvoice` | `invoices`, `purchase_orders`, `delivery_orders` | Implemented |
 | F-018 | Retur Pembelian | Pencatatan Pengembalian Barang Cacat/Lebih ke Supplier | `PurchaseReturnController` | `purchase_returns`, `purchase_return_items` | Implemented |
-| F-019 | Uang Muka Pembelian (DP) | Catat Down Payment untuk PO ke Supplier | `PurchaseDownPaymentController` | `purchase_down_payments`, `purchase_orders` | Implemented |
-| F-020 | Pembayaran Tagihan Supplier | Bayar Faktur (Single/Multi Invoice) dengan Potongan DP | `PurchasePaymentController` | `purchase_payments`, `purchase_payment_items`, `invoices`, `purchase_down_payments` | Implemented |
-| F-021 | Ringkasan Hutang & Toko | Rekapitulasi Tagihan dan Pembayaran Toko Lintas Proyek | `FinanceSummaryController@supplierSummary` | `suppliers`, `invoices`, `purchase_payments` | Implemented |
-| F-022 | Variance Validation | Validasi Deviasi Realisasi (Dual Approval: Pengawas + Purchasing) | `VarianceValidationController` | `material_variance_validations`, `material_realizations` | Implemented |
-| F-023 | Alert Center | Notifikasi Over-budget, Keterlambatan PO, Deviasi Material | `AlertController` | `alerts`, `projects` | Implemented |
-| F-024 | Manajemen Pengguna & Hak Akses | CRUD User, Assign Roles & Permissions, Role Switcher | `UserController`, `RoleSimulationController` | `users`, `roles`, `permissions` | Implemented |
+| F-019 | Pembayaran Tagihan Supplier | Bayar Faktur Pembelian (Single/Multi Invoice) Langsung ke Supplier | `PurchasePaymentController` | `purchase_payments`, `purchase_payment_items`, `invoices` | Implemented |
+| F-020 | Ringkasan Hutang & Toko | Rekapitulasi Tagihan dan Pembayaran Toko Lintas Proyek | `FinanceSummaryController@supplierSummary` | `suppliers`, `invoices`, `purchase_payments` | Implemented |
+| F-021 | Variance Validation | Validasi Deviasi Realisasi (Dual Approval: Pengawas + Purchasing) | `VarianceValidationController` | `material_variance_validations`, `material_realizations` | Implemented |
+| F-022 | Alert Center | Notifikasi Over-budget, Keterlambatan PO, Deviasi Material | `AlertController` | `alerts`, `projects` | Implemented |
+| F-023 | Manajemen Pengguna & Hak Akses | CRUD User, Assign Roles & Permissions, Role Switcher | `UserController`, `RoleSimulationController` | `users`, `roles`, `permissions` | Implemented |

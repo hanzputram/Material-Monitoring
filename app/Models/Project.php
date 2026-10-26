@@ -105,11 +105,6 @@ class Project extends Model
         return $this->hasMany(MandorBorongan::class);
     }
 
-    public function purchaseDownPayments()
-    {
-        return $this->hasMany(PurchaseDownPayment::class);
-    }
-
     public function purchasePayments()
     {
         return $this->hasMany(PurchasePayment::class);

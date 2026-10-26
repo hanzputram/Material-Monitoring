@@ -15,7 +15,7 @@
             this.paymentItems = {};
             if (newVal) {
                 this.invoices.filter(inv => inv.supplier_id == newVal).forEach(inv => {
-                    const remaining = Math.max(0, parseFloat(inv.amount || 0) - parseFloat(inv.down_payment_amount || 0) - parseFloat(inv.paid_amount || 0));
+                    const remaining = Math.max(0, parseFloat(inv.amount || 0) - parseFloat(inv.paid_amount || 0));
                     this.paymentItems[inv.id] = {
                         selected: false,
                         amount: remaining,
@@ -342,7 +342,7 @@
                                             <span class="font-mono font-bold text-slate-800" x-text="inv.invoice_number"></span>
                                             <span class="text-[10px] text-slate-400 block" x-text="inv.invoice_date"></span>
                                         </td>
-                                        <td class="py-2 px-3 text-right font-mono text-slate-600" x-text="'Rp ' + formatRupiah(inv.amount - (inv.down_payment_amount || 0))"></td>
+                                        <td class="py-2 px-3 text-right font-mono text-slate-600" x-text="'Rp ' + formatRupiah(inv.amount)"></td>
                                         <td class="py-2 px-3 text-right font-mono font-bold text-amber-600" x-text="'Rp ' + formatRupiah(paymentItems[inv.id].max)"></td>
                                         <td class="py-2 px-3 text-right">
                                             <input type="number" 

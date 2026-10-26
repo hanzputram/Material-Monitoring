@@ -44,12 +44,6 @@ class FinanceSummaryController extends Controller
                 }
                 $q->with('project');
             },
-            'downPayments' => function ($q) use ($selectedProjectId) {
-                if ($selectedProjectId && $selectedProjectId !== 'all') {
-                    $q->where('project_id', $selectedProjectId);
-                }
-                $q->with('project');
-            },
             'payments' => function ($q) use ($selectedProjectId) {
                 if ($selectedProjectId && $selectedProjectId !== 'all') {
                     $q->where('project_id', $selectedProjectId);
@@ -80,7 +74,6 @@ class FinanceSummaryController extends Controller
             $pos = $supplier->purchaseOrders;
             $dos = $supplier->deliveryOrders;
             $invoices = $supplier->invoices;
-            $dps = $supplier->downPayments;
             $payments = $supplier->payments;
             $returns = $supplier->returns;
 
@@ -92,7 +85,6 @@ class FinanceSummaryController extends Controller
             $totalInvoiceNet = (float) $invoices->sum(function ($inv) {
                 return $inv->net_amount;
             });
-            $totalDpAmount = (float) $dps->sum('amount');
             $totalPaidAmount = (float) $invoices->sum('paid_amount');
             $outstandingBalance = max(0, $totalInvoiceNet - $totalPaidAmount);
 
@@ -105,17 +97,15 @@ class FinanceSummaryController extends Controller
                 ->merge($pos->pluck('project_id'))
                 ->merge($dos->pluck('project_id'))
                 ->merge($invoices->pluck('project_id'))
-                ->merge($dps->pluck('project_id'))
                 ->merge($payments->pluck('project_id'))
                 ->unique()
                 ->filter();
 
             // Breakdown rincian per proyek untuk supplier ini
-            $projectBreakdowns = $involvedProjectIds->map(function ($projId) use ($pos, $dos, $invoices, $dps, $returns) {
+            $projectBreakdowns = $involvedProjectIds->map(function ($projId) use ($pos, $dos, $invoices, $returns) {
                 $projPos = $pos->where('project_id', $projId);
                 $projDos = $dos->where('project_id', $projId);
                 $projInvoices = $invoices->where('project_id', $projId);
-                $projDps = $dps->where('project_id', $projId);
                 $projReturns = $returns->where('project_id', $projId);
 
                 $projectName = $projPos->first()?->project?->name
@@ -140,7 +130,6 @@ class FinanceSummaryController extends Controller
                     'do_count' => $projDos->count(),
                     'invoice_count' => $projInvoices->count(),
                     'invoice_total' => $projInvNet,
-                    'dp_total' => (float) $projDps->sum('amount'),
                     'paid_total' => $projPaid,
                     'outstanding' => $projOutstanding,
                     'return_count' => $projReturns->count(),
@@ -155,7 +144,6 @@ class FinanceSummaryController extends Controller
                 'invoice_count' => $invoices->count(),
                 'total_invoice_gross' => $totalInvoiceGross,
                 'total_invoice_net' => $totalInvoiceNet,
-                'total_dp_amount' => $totalDpAmount,
                 'total_paid_amount' => $totalPaidAmount,
                 'outstanding_balance' => $outstandingBalance,
                 'total_return_amount' => $totalReturnAmount,
@@ -184,7 +172,6 @@ class FinanceSummaryController extends Controller
             'grand_invoice_amount' => (float) $supplierSummaries->sum('total_invoice_net'),
             'grand_paid_amount' => (float) $supplierSummaries->sum('total_paid_amount'),
             'grand_outstanding' => (float) $supplierSummaries->sum('outstanding_balance'),
-            'grand_dp_amount' => (float) $supplierSummaries->sum('total_dp_amount'),
         ];
 
         return view('finance.supplier_summary', compact(

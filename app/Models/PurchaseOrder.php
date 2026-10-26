@@ -56,11 +56,6 @@ class PurchaseOrder extends Model
         return $this->hasMany(Invoice::class);
     }
 
-    public function downPayments()
-    {
-        return $this->hasMany(PurchaseDownPayment::class);
-    }
-
     public function returns()
     {
         return $this->hasManyThrough(PurchaseReturn::class, DeliveryOrder::class);

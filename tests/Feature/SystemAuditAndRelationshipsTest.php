@@ -6,9 +6,10 @@ use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialRealization;
 use App\Models\Project;
-use App\Models\PurchaseDownPayment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\PurchasePayment;
+use App\Models\PurchasePaymentItem;
 use App\Models\RabItem;
 use App\Models\RabItemMaterial;
 use App\Models\RabNode;
@@ -57,13 +58,11 @@ class SystemAuditAndRelationshipsTest extends TestCase
 
         // Relasi Project
         $this->assertInstanceOf(HasMany::class, $project->mandorBorongans());
-        $this->assertInstanceOf(HasMany::class, $project->purchaseDownPayments());
         $this->assertInstanceOf(HasMany::class, $project->purchasePayments());
         $this->assertInstanceOf(HasMany::class, $project->purchaseReturns());
 
         // Relasi PurchaseOrder
         $po = PurchaseOrder::firstOrFail();
-        $this->assertInstanceOf(HasMany::class, $po->downPayments());
         $this->assertInstanceOf(Relation::class, $po->returns());
 
         // Relasi PurchaseOrderItem
@@ -72,22 +71,12 @@ class SystemAuditAndRelationshipsTest extends TestCase
     }
 
     /**
-     * Test 2: Status invoice yang 100% lunas ditutup DP tidak boleh menjadi 'unpaid' saat recalculate
+     * Test 2: Status invoice yang lunas via PurchasePayment diperbarui dengan benar
      */
-    public function test_invoice_recalculate_payment_status_when_fully_paid_by_down_payment(): void
+    public function test_invoice_recalculate_payment_status_updates_paid_status_correctly(): void
     {
         $project = Project::firstOrFail();
         $supplier = Supplier::firstOrFail();
-
-        $dp = PurchaseDownPayment::create([
-            'project_id' => $project->id,
-            'supplier_id' => $supplier->id,
-            'dp_number' => 'DP-TEST-FULL-001',
-            'dp_date' => now()->toDateString(),
-            'amount' => 5000000,
-            'payment_method' => 'Transfer Bank',
-            'status' => 'applied',
-        ]);
 
         $invoice = Invoice::create([
             'project_id' => $project->id,
@@ -95,22 +84,36 @@ class SystemAuditAndRelationshipsTest extends TestCase
             'invoice_number' => 'INV-TEST-FULL-001',
             'invoice_date' => now()->toDateString(),
             'amount' => 5000000,
-            'down_payment_id' => $dp->id,
-            'down_payment_amount' => 5000000,
             'paid_amount' => 0,
-            'payment_status' => 'paid',
+            'payment_status' => 'unpaid',
             'attachment_path' => 'dummy.pdf',
             'validated_by' => Auth::id(),
             'status' => 'validated',
         ]);
 
-        $this->assertEquals(0, $invoice->net_amount);
+        $this->assertEquals(5000000, $invoice->net_amount);
+
+        // Buat pembayaran penuh
+        $payment = PurchasePayment::create([
+            'project_id' => $project->id,
+            'supplier_id' => $supplier->id,
+            'payment_number' => 'PAY-TEST-001',
+            'payment_date' => now()->toDateString(),
+            'total_amount' => 5000000,
+        ]);
+
+        PurchasePaymentItem::create([
+            'purchase_payment_id' => $payment->id,
+            'invoice_id' => $invoice->id,
+            'amount_paid' => 5000000,
+        ]);
 
         // Panggil rekalkulasi status
         $invoice->recalculatePaymentStatus();
 
-        // Harus tetap 'paid', BUKAN 'unpaid'
+        // Harus menjadi 'paid'
         $this->assertEquals('paid', $invoice->payment_status);
+        $this->assertEquals(5000000, (float) $invoice->paid_amount);
     }
 
     /**
@@ -250,9 +253,9 @@ class SystemAuditAndRelationshipsTest extends TestCase
     }
 
     /**
-     * Test 6: Supplier tidak dapat dihapus jika memiliki Down Payment, Pembayaran, atau Retur
+     * Test 6: Supplier tidak dapat dihapus jika memiliki Pembayaran atau Retur
      */
-    public function test_supplier_cannot_be_deleted_if_it_has_down_payments_payments_or_returns(): void
+    public function test_supplier_cannot_be_deleted_if_it_has_payments_or_returns(): void
     {
         $project = Project::firstOrFail();
         $supplier = Supplier::create([
@@ -262,14 +265,13 @@ class SystemAuditAndRelationshipsTest extends TestCase
             'address' => 'Jl. Uji Coba',
         ]);
 
-        PurchaseDownPayment::create([
+        PurchasePayment::create([
             'project_id' => $project->id,
             'supplier_id' => $supplier->id,
-            'dp_number' => 'DP-PROT-001',
-            'dp_date' => now()->toDateString(),
-            'amount' => 1000000,
+            'payment_number' => 'PAY-PROT-001',
+            'payment_date' => now()->toDateString(),
+            'total_amount' => 1000000,
             'payment_method' => 'Transfer Bank',
-            'status' => 'paid',
         ]);
 
         $response = $this->delete(route('suppliers.destroy', $supplier->id));

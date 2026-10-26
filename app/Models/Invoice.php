@@ -17,8 +17,6 @@ class Invoice extends Model
         'validated_by',
         'status',
         'notes',
-        'down_payment_id',
-        'down_payment_amount',
         'paid_amount',
         'payment_status',
         'due_date',
@@ -28,7 +26,6 @@ class Invoice extends Model
         'invoice_date' => 'date',
         'due_date' => 'date',
         'amount' => 'decimal:2',
-        'down_payment_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
     ];
 
@@ -52,11 +49,6 @@ class Invoice extends Model
         return $this->belongsTo(User::class, 'validated_by');
     }
 
-    public function downPayment()
-    {
-        return $this->belongsTo(PurchaseDownPayment::class, 'down_payment_id');
-    }
-
     public function payments()
     {
         return $this->belongsToMany(PurchasePayment::class, 'purchase_payment_items')
@@ -76,12 +68,12 @@ class Invoice extends Model
 
     public function getNetAmountAttribute(): float
     {
-        return max(0, (float) $this->amount - (float) ($this->down_payment_amount ?? 0));
+        return (float) $this->amount;
     }
 
     public function getRemainingBalanceAttribute(): float
     {
-        return max(0, $this->net_amount - (float) ($this->paid_amount ?? 0));
+        return max(0, (float) $this->amount - (float) ($this->paid_amount ?? 0));
     }
 
     public function recalculatePaymentStatus(): void
@@ -89,9 +81,9 @@ class Invoice extends Model
         $totalPaid = (float) $this->paymentItems()->sum('amount_paid');
         $this->paid_amount = $totalPaid;
 
-        if ($totalPaid >= $this->net_amount && ($this->net_amount > 0 || (float) ($this->down_payment_amount ?? 0) > 0 || (float) $this->amount == 0)) {
+        if ($totalPaid >= (float) $this->amount) {
             $this->payment_status = 'paid';
-        } elseif ($totalPaid > 0 || (float) ($this->down_payment_amount ?? 0) > 0) {
+        } elseif ($totalPaid > 0) {
             $this->payment_status = 'partial';
         } else {
             $this->payment_status = 'unpaid';

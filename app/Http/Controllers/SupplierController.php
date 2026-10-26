@@ -78,11 +78,10 @@ class SupplierController extends Controller
         $linkedDos = $supplier->deliveryOrders()->count();
         $linkedPos = $supplier->purchaseOrders()->count();
         $linkedInvoices = $supplier->invoices()->count();
-        $linkedDps = $supplier->downPayments()->count();
         $linkedPayments = $supplier->payments()->count();
         $linkedReturns = $supplier->returns()->count();
 
-        if ($linkedDos > 0 || $linkedPos > 0 || $linkedInvoices > 0 || $linkedDps > 0 || $linkedPayments > 0 || $linkedReturns > 0) {
+        if ($linkedDos > 0 || $linkedPos > 0 || $linkedInvoices > 0 || $linkedPayments > 0 || $linkedReturns > 0) {
             $details = [];
             if ($linkedDos > 0) {
                 $details[] = "{$linkedDos} DO";
@@ -92,9 +91,6 @@ class SupplierController extends Controller
             }
             if ($linkedInvoices > 0) {
                 $details[] = "{$linkedInvoices} Invoice";
-            }
-            if ($linkedDps > 0) {
-                $details[] = "{$linkedDps} DP";
             }
             if ($linkedPayments > 0) {
                 $details[] = "{$linkedPayments} Pembayaran";

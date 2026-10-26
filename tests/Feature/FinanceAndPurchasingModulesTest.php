@@ -6,7 +6,6 @@ use App\Models\DeliveryOrder;
 use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\Project;
-use App\Models\PurchaseDownPayment;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\Unit;
@@ -45,80 +44,34 @@ class FinanceAndPurchasingModulesTest extends TestCase
         }
     }
 
-    public function test_down_payments_index_loads_and_down_payment_can_be_created(): void
-    {
-        $project = Project::first();
-        $supplier = Supplier::first() ?? Supplier::create([
-            'name' => 'Toko Besi & Bangunan Abadi',
-            'contact_person' => 'Budi',
-            'phone' => '08123456789',
-        ]);
-
-        $response = $this->get(route('finance.down-payments.index', ['project_id' => $project->id]));
-        $response->assertStatus(200);
-        $response->assertSee('Uang Muka Pembelian');
-        $response->assertSee('Catat Uang Muka (DP)');
-
-        $dpResponse = $this->post(route('finance.down-payments.store'), [
-            'project_id' => $project->id,
-            'supplier_id' => $supplier->id,
-            'dp_number' => 'DP-2026-TEST-001',
-            'dp_date' => '2026-09-28',
-            'amount' => 5000000,
-            'payment_method' => 'Transfer Bank',
-            'bank_name' => 'BCA Rek. 1234567890',
-            'notes' => 'Uang muka pengadaan besi',
-        ]);
-
-        $dpResponse->assertRedirect(route('finance.down-payments.index', ['project_id' => $project->id]));
-        $this->assertDatabaseHas('purchase_down_payments', [
-            'dp_number' => 'DP-2026-TEST-001',
-            'amount' => 5000000,
-            'status' => 'paid',
-        ]);
-    }
-
-    public function test_invoice_creation_with_down_payment_deduction(): void
+    public function test_invoice_creation(): void
     {
         $project = Project::first();
         $supplier = Supplier::first();
-
-        $dp = PurchaseDownPayment::create([
-            'project_id' => $project->id,
-            'supplier_id' => $supplier->id,
-            'dp_number' => 'DP-DEDUCT-001',
-            'dp_date' => '2026-09-20',
-            'amount' => 2000000,
-            'payment_method' => 'Transfer Bank',
-            'status' => 'paid',
-        ]);
 
         $file = UploadedFile::fake()->create('invoice_tagihan.pdf', 150);
 
         $response = $this->post(route('procurement.invoice.store'), [
             'project_id' => $project->id,
             'supplier_id' => $supplier->id,
-            'invoice_number' => 'INV-DEDUCT-999',
+            'invoice_number' => 'INV-TEST-999',
             'invoice_date' => '2026-09-28',
             'due_date' => '2026-10-15',
             'amount' => 10000000,
-            'down_payment_id' => $dp->id,
             'attachment' => $file,
-            'notes' => 'Tagihan dengan potongan uang muka',
+            'notes' => 'Tagihan resmi supplier',
         ]);
 
         $response->assertRedirect(route('procurement.invoices.index', ['project_id' => $project->id]));
 
         $this->assertDatabaseHas('invoices', [
-            'invoice_number' => 'INV-DEDUCT-999',
-            'down_payment_id' => $dp->id,
-            'down_payment_amount' => 2000000,
+            'invoice_number' => 'INV-TEST-999',
+            'amount' => 10000000,
             'payment_status' => 'unpaid',
         ]);
 
-        $invoice = Invoice::where('invoice_number', 'INV-DEDUCT-999')->first();
-        $this->assertEquals(8000000, $invoice->net_amount);
-        $this->assertEquals('applied', $dp->fresh()->status);
+        $invoice = Invoice::where('invoice_number', 'INV-TEST-999')->first();
+        $this->assertEquals(10000000, $invoice->net_amount);
     }
 
     public function test_purchase_payment_settles_invoice(): void
