@@ -100,6 +100,26 @@ class Project extends Model
         return $this->hasMany(CostRealization::class);
     }
 
+    public function mandorBorongans()
+    {
+        return $this->hasMany(MandorBorongan::class);
+    }
+
+    public function purchaseDownPayments()
+    {
+        return $this->hasMany(PurchaseDownPayment::class);
+    }
+
+    public function purchasePayments()
+    {
+        return $this->hasMany(PurchasePayment::class);
+    }
+
+    public function purchaseReturns()
+    {
+        return $this->hasMany(PurchaseReturn::class);
+    }
+
     public function getTotalRabAttribute(): float
     {
         return (float) $this->rootRabNodes()->sum('subtotal_cache');

@@ -40,6 +40,12 @@ class PurchaseOrderItem extends Model
         return $this->belongsTo(Unit::class);
     }
 
+    public function deliveryOrderItems()
+    {
+        return $this->hasMany(DeliveryOrderItem::class, 'purchase_order_id', 'purchase_order_id')
+            ->where('material_id', $this->material_id);
+    }
+
     public function getSubtotalAttribute(): float
     {
         return (float) $this->qty_ordered * (float) $this->unit_price;

@@ -56,6 +56,16 @@ class PurchaseOrder extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    public function downPayments()
+    {
+        return $this->hasMany(PurchaseDownPayment::class);
+    }
+
+    public function returns()
+    {
+        return $this->hasManyThrough(PurchaseReturn::class, DeliveryOrder::class);
+    }
+
     public function getTotalAmountAttribute(): float
     {
         return (float) $this->items->sum(function ($item) {
