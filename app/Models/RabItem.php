@@ -31,17 +31,17 @@ class RabItem extends Model
         static::saved(function ($item) {
             if ($item->rabNode) {
                 $item->rabNode->refreshSubtotal();
+                // Auto sync to cost_realizations
+                CostRealization::updateOrCreate(
+                    [
+                        'project_id' => $item->rabNode->project_id,
+                        'rab_item_id' => $item->id,
+                    ],
+                    [
+                        'budget_amount' => $item->total_price,
+                    ]
+                );
             }
-            // Auto sync to cost_realizations
-            CostRealization::updateOrCreate(
-                [
-                    'project_id' => $item->rabNode->project_id,
-                    'rab_item_id' => $item->id,
-                ],
-                [
-                    'budget_amount' => $item->total_price,
-                ]
-            );
         });
 
         static::deleted(function ($item) {
@@ -50,6 +50,51 @@ class RabItem extends Model
             }
             CostRealization::where('rab_item_id', $item->id)->delete();
         });
+    }
+
+    public function getActualCostAttribute(): float
+    {
+        $cr = $this->costRealization;
+        if ($cr && (float) $cr->actual_amount > 0) {
+            return (float) $cr->actual_amount;
+        }
+
+        if ($this->relationLoaded('purchaseOrderItems')) {
+            return (float) $this->purchaseOrderItems
+                ->filter(fn ($poi) => $poi->purchaseOrder && $poi->purchaseOrder->status !== 'cancelled')
+                ->sum(fn ($poi) => (float) $poi->qty_ordered * (float) $poi->unit_price);
+        }
+
+        return (float) $this->purchaseOrderItems()
+            ->whereHas('purchaseOrder', fn ($q) => $q->where('status', '!=', 'cancelled'))
+            ->get()
+            ->sum(fn ($poi) => (float) $poi->qty_ordered * (float) $poi->unit_price);
+    }
+
+    public function syncCostRealization(): CostRealization
+    {
+        $actual = (float) $this->purchaseOrderItems()
+            ->whereHas('purchaseOrder', fn ($q) => $q->where('status', '!=', 'cancelled'))
+            ->get()
+            ->sum(fn ($poi) => (float) $poi->qty_ordered * (float) $poi->unit_price);
+
+        $budget = (float) $this->total_price;
+        $variance = $actual - $budget;
+        $variancePct = $budget > 0 ? round(($variance / $budget) * 100, 2) : ($actual > 0 ? 100.0 : 0.0);
+
+        return CostRealization::updateOrCreate(
+            [
+                'project_id' => $this->rabNode?->project_id,
+                'rab_item_id' => $this->id,
+            ],
+            [
+                'budget_amount' => $budget,
+                'actual_amount' => $actual,
+                'variance_amount' => $variance,
+                'variance_pct' => $variancePct,
+                'last_calculated_at' => now(),
+            ]
+        );
     }
 
     public function rabNode()

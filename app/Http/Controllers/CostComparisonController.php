@@ -23,10 +23,13 @@ class CostComparisonController extends Controller
         // 1. Hierarchy roll-up
         $rootNodes = RabNode::with([
             'children.children.rabItems.costRealization',
+            'children.children.rabItems.purchaseOrderItems.purchaseOrder',
             'children.children.rabItems.unit',
             'children.rabItems.costRealization',
+            'children.rabItems.purchaseOrderItems.purchaseOrder',
             'children.rabItems.unit',
             'rabItems.costRealization',
+            'rabItems.purchaseOrderItems.purchaseOrder',
             'rabItems.unit',
         ])
             ->where('project_id', $project->id)
@@ -53,7 +56,7 @@ class CostComparisonController extends Controller
         foreach ($rootNodes as $node) {
             $chartCategories[] = $node->code.' '.(strlen($node->name) > 20 ? substr($node->name, 0, 18).'...' : $node->name);
             $chartBudgets[] = (float) $node->subtotal_cache;
-            $chartActuals[] = round((float) $node->subtotal_cache * 0.92, 2); // Sample realization comparison
+            $chartActuals[] = round((float) $node->actual_cost_total, 2);
         }
 
         return view('cost.index', compact(

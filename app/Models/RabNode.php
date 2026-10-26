@@ -42,6 +42,14 @@ class RabNode extends Model
         return $this->hasMany(RabItem::class, 'rab_node_id')->orderBy('sort_order');
     }
 
+    public function getActualCostTotalAttribute(): float
+    {
+        $itemsTotal = (float) $this->rabItems->sum(fn ($item) => (float) $item->actual_cost);
+        $childrenTotal = (float) $this->children->sum(fn ($child) => (float) $child->actual_cost_total);
+
+        return $itemsTotal + $childrenTotal;
+    }
+
     public function refreshSubtotal(bool $bubbleUp = true): float
     {
         $itemsTotal = (float) $this->rabItems()->sum('total_price');

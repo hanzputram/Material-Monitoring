@@ -78,41 +78,52 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium">
                     @foreach($rootNodes as $n1)
+                        @php
+                            $n1Budget = (float) $n1->subtotal_cache;
+                            $n1Actual = (float) $n1->actual_cost_total;
+                            $n1Diff = $n1Actual - $n1Budget;
+                            $n1Pct = $n1Budget > 0 ? round(($n1Diff / $n1Budget) * 100, 2) : ($n1Actual > 0 ? 100.0 : 0.0);
+                        @endphp
                         <!-- Level 1 -->
                         <tr class="bg-slate-100/90 font-extrabold text-slate-900">
                             <td class="py-3 px-5 font-mono">{{ $n1->code }}</td>
                             <td class="py-3 px-5" colspan="3">{{ $n1->name }}</td>
-                            <td class="py-3 px-4 text-right font-mono font-black">Rp {{ number_format($n1->subtotal_cache, 2, ',', '.') }}</td>
-                            <td class="py-3 px-4 text-right font-mono font-black text-emerald-800">Rp {{ number_format($n1->subtotal_cache * 0.92, 2, ',', '.') }}</td>
-                            <td class="py-3 px-4 text-right font-mono text-emerald-700">-Rp {{ number_format($n1->subtotal_cache * 0.08, 2, ',', '.') }}</td>
-                            <td class="py-3 px-4 text-right font-mono text-emerald-700">-8.00%</td>
+                            <td class="py-3 px-4 text-right font-mono font-black">Rp {{ number_format($n1Budget, 2, ',', '.') }}</td>
+                            <td class="py-3 px-4 text-right font-mono font-black {{ $n1Diff > 0 ? 'text-rose-800' : 'text-emerald-800' }}">Rp {{ number_format($n1Actual, 2, ',', '.') }}</td>
+                            <td class="py-3 px-4 text-right font-mono {{ $n1Diff > 0 ? 'text-rose-700' : 'text-emerald-700' }}">{{ $n1Diff > 0 ? '+Rp ' : ($n1Diff < 0 ? '-Rp ' : 'Rp ') }}{{ number_format(abs($n1Diff), 2, ',', '.') }}</td>
+                            <td class="py-3 px-4 text-right font-mono {{ $n1Diff > 0 ? 'text-rose-700' : 'text-emerald-700' }}">{{ $n1Diff > 0 ? '+' : '' }}{{ number_format($n1Pct, 2, ',', '.') }}%</td>
                             <td class="py-3 px-4 text-center">
-                                <span class="badge-clean bg-emerald-100 text-emerald-800 text-[10px]">Efisien</span>
+                                <span class="badge-clean {{ $n1Diff > 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800' }} text-[10px]">{{ $n1Diff > 0 ? 'Over' : 'Efisien' }}</span>
                             </td>
                         </tr>
 
                         <!-- Level 2 Sub -->
                         @foreach($n1->children as $n2)
+                            @php
+                                $n2Budget = (float) $n2->subtotal_cache;
+                                $n2Actual = (float) $n2->actual_cost_total;
+                                $n2Diff = $n2Actual - $n2Budget;
+                                $n2Pct = $n2Budget > 0 ? round(($n2Diff / $n2Budget) * 100, 2) : ($n2Actual > 0 ? 100.0 : 0.0);
+                            @endphp
                             <tr class="bg-slate-50 font-bold text-slate-800">
                                 <td class="py-2.5 px-5 pl-8 font-mono text-indigo-700">{{ $n2->code }}</td>
                                 <td class="py-2.5 px-5 pl-8" colspan="3">{{ $n2->name }}</td>
-                                <td class="py-2.5 px-4 text-right font-mono font-bold">Rp {{ number_format($n2->subtotal_cache, 2, ',', '.') }}</td>
-                                <td class="py-2.5 px-4 text-right font-mono font-bold text-emerald-700">Rp {{ number_format($n2->subtotal_cache * 0.92, 2, ',', '.') }}</td>
-                                <td class="py-2.5 px-4 text-right font-mono text-emerald-600">-Rp {{ number_format($n2->subtotal_cache * 0.08, 2, ',', '.') }}</td>
-                                <td class="py-2.5 px-4 text-right font-mono text-emerald-600">-8.00%</td>
+                                <td class="py-2.5 px-4 text-right font-mono font-bold">Rp {{ number_format($n2Budget, 2, ',', '.') }}</td>
+                                <td class="py-2.5 px-4 text-right font-mono font-bold {{ $n2Diff > 0 ? 'text-rose-700' : 'text-emerald-700' }}">Rp {{ number_format($n2Actual, 2, ',', '.') }}</td>
+                                <td class="py-2.5 px-4 text-right font-mono {{ $n2Diff > 0 ? 'text-rose-600' : 'text-emerald-600' }}">{{ $n2Diff > 0 ? '+Rp ' : ($n2Diff < 0 ? '-Rp ' : 'Rp ') }}{{ number_format(abs($n2Diff), 2, ',', '.') }}</td>
+                                <td class="py-2.5 px-4 text-right font-mono {{ $n2Diff > 0 ? 'text-rose-600' : 'text-emerald-600' }}">{{ $n2Diff > 0 ? '+' : '' }}{{ number_format($n2Pct, 2, ',', '.') }}%</td>
                                 <td class="py-2.5 px-4 text-center">
-                                    <span class="badge-clean bg-emerald-100 text-emerald-800 text-[10px]">Efisien</span>
+                                    <span class="badge-clean {{ $n2Diff > 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800' }} text-[10px]">{{ $n2Diff > 0 ? 'Over' : 'Efisien' }}</span>
                                 </td>
                             </tr>
 
                             <!-- Level 4 Items under Level 2 -->
                             @foreach($n2->rabItems as $item)
                                 @php
-                                    $cr = $item->costRealization;
                                     $budget = (float) $item->total_price;
-                                    $actual = $cr ? (float) $cr->actual_amount : ($budget * 0.92);
+                                    $actual = (float) $item->actual_cost;
                                     $diff = $actual - $budget;
-                                    $pct = $budget > 0 ? round(($diff / $budget) * 100, 2) : 0;
+                                    $pct = $budget > 0 ? round(($diff / $budget) * 100, 2) : ($actual > 0 ? 100.0 : 0.0);
                                 @endphp
                                 <tr class="hover:bg-slate-50/70 text-slate-700">
                                     <td class="py-2.5 px-5 pl-12 font-mono text-slate-500">{{ $item->item_no }}</td>

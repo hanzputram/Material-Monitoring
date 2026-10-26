@@ -64,8 +64,7 @@ class DashboardController extends Controller
         foreach ($currentProject->rootRabNodes as $node) {
             $chartCategories[] = $node->code.' '.(strlen($node->name) > 20 ? substr($node->name, 0, 18).'...' : $node->name);
             $chartBudgets[] = (float) $node->subtotal_cache;
-            // Approximate actual based on invoices or proportional costs
-            $chartActuals[] = (float) $node->subtotal_cache * 0.95; // Demo baseline
+            $chartActuals[] = round((float) $node->actual_cost_total, 2);
         }
 
         // 4. Recent Alerts
