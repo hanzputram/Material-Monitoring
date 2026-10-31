@@ -51,6 +51,29 @@ class RabNode extends Model
         return $this->hasMany(RabItem::class, 'rab_node_id')->orderBy('sort_order');
     }
 
+    /**
+     * Daftar relasi eager-load untuk seluruh pohon RAB (Level 1-3 + item Level 4),
+     * sehingga traversal pohon di controller/view tidak memicu query N+1.
+     *
+     * @param  array<int, string>  $itemRelations  relasi tambahan untuk tiap RabItem
+     * @return array<int, string>
+     */
+    public static function treeRelations(array $itemRelations = []): array
+    {
+        $relations = [];
+        foreach (['', 'children.', 'children.children.'] as $prefix) {
+            $relations[] = $prefix.'rabItems';
+            foreach ($itemRelations as $relation) {
+                $relations[] = $prefix.'rabItems.'.$relation;
+            }
+        }
+
+        // Level 3 tidak punya anak, tetapi relasi dimuat agar akses ->children tidak query ulang
+        $relations[] = 'children.children.children';
+
+        return $relations;
+    }
+
     public function getActualCostTotalAttribute(): float
     {
         $itemsTotal = (float) $this->rabItems->sum(fn ($item) => (float) $item->actual_cost);

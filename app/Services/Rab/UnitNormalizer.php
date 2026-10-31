@@ -39,6 +39,7 @@ class UnitNormalizer
         'set' => 'Set',
         'titik' => 'Titik',
         'roll' => 'Roll',
+        'rol' => 'Roll',
         'dus' => 'Dus',
     ];
 

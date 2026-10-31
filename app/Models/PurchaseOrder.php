@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseOrder extends Model
@@ -69,9 +70,100 @@ class PurchaseOrder extends Model
     }
 
     /**
-     * Dapatkan rincian pemenuhan/penerimaan untuk setiap item pada PO ini
+     * Total qty diterima per PO per material: [po_id => [material_id => qty]] dalam satu query.
+     *
+     * @param  array<int, int>  $purchaseOrderIds
+     * @return array<int, array<int, float>>
      */
-    public function getFulfillmentDetails(): array
+    public static function receivedQuantitiesFor(array $purchaseOrderIds): array
+    {
+        if (empty($purchaseOrderIds)) {
+            return [];
+        }
+
+        $map = [];
+        DeliveryOrderItem::query()
+            ->whereIn('purchase_order_id', $purchaseOrderIds)
+            ->groupBy('purchase_order_id', 'material_id')
+            ->selectRaw('purchase_order_id, material_id, SUM(qty_received) as total')
+            ->toBase()
+            ->get()
+            ->each(function ($row) use (&$map) {
+                $map[(int) $row->purchase_order_id][(int) $row->material_id] = (float) $row->total;
+            });
+
+        return $map;
+    }
+
+    /**
+     * Isi atribut `fulfillment` untuk banyak PO sekaligus tanpa query per item.
+     * PO sebaiknya sudah eager-load `items.material.defaultUnit` dan `items.unit`.
+     *
+     * @param  Collection<int, PurchaseOrder>  $purchaseOrders
+     * @return Collection<int, PurchaseOrder>
+     */
+    public static function attachFulfillment(Collection $purchaseOrders): Collection
+    {
+        $received = self::receivedQuantitiesFor($purchaseOrders->modelKeys());
+
+        $doNumbers = $purchaseOrders->pluck('delivery_order_number')
+            ->filter()
+            ->map(fn ($n) => trim($n))
+            ->unique()
+            ->values();
+
+        $usedDoNumbers = [];
+        if ($doNumbers->isNotEmpty()) {
+            DeliveryOrder::query()
+                ->whereIn('project_id', $purchaseOrders->pluck('project_id')->unique()->values())
+                ->whereIn('do_number', $doNumbers)
+                ->get(['project_id', 'do_number'])
+                ->each(function ($do) use (&$usedDoNumbers) {
+                    $usedDoNumbers[$do->project_id.'|'.$do->do_number] = true;
+                });
+        }
+
+        return $purchaseOrders->each(function (PurchaseOrder $po) use ($received, $usedDoNumbers) {
+            $po->fulfillment = $po->getFulfillmentDetails($received[$po->id] ?? [], $usedDoNumbers);
+        });
+    }
+
+    /**
+     * Jumlah PO (non-cancelled) pada proyek yang masih memiliki item belum diterima penuh.
+     * Dihitung dengan satu query agregat (dipakai badge sidebar di setiap halaman).
+     */
+    public static function pendingCountForProject(?int $projectId): int
+    {
+        if (! $projectId) {
+            return 0;
+        }
+
+        $received = DeliveryOrderItem::query()
+            ->whereNotNull('purchase_order_id')
+            ->groupBy('purchase_order_id', 'material_id')
+            ->selectRaw('purchase_order_id, material_id, SUM(qty_received) as qty_received_total')
+            ->toBase();
+
+        return (int) PurchaseOrderItem::query()
+            ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
+            ->leftJoinSub($received, 'received', function ($join) {
+                $join->on('received.purchase_order_id', '=', 'purchase_order_items.purchase_order_id')
+                    ->on('received.material_id', '=', 'purchase_order_items.material_id');
+            })
+            ->where('purchase_orders.project_id', $projectId)
+            ->where('purchase_orders.status', '!=', 'cancelled')
+            ->whereRaw('purchase_order_items.qty_ordered - COALESCE(received.qty_received_total, 0) > 0')
+            ->distinct()
+            ->count('purchase_order_items.purchase_order_id');
+    }
+
+    /**
+     * Dapatkan rincian pemenuhan/penerimaan untuk setiap item pada PO ini
+     *
+     * @param  array<int, float>|null  $receivedByMaterial  qty diterima per material (dari receivedQuantitiesFor)
+     * @param  array<string, bool>|null  $usedDoNumbers  set "project_id|do_number" yang sudah dipakai
+     */
+    public function getFulfillmentDetails(?array $receivedByMaterial = null, ?array $usedDoNumbers = null): array
     {
         $items = [];
         $totalOrdered = 0;
@@ -79,10 +171,10 @@ class PurchaseOrder extends Model
         $hasPending = false;
         $hasReceived = false;
 
+        $receivedByMaterial ??= self::receivedQuantitiesFor([$this->id])[$this->id] ?? [];
+
         foreach ($this->items as $it) {
-            $receivedQty = (float) DeliveryOrderItem::where('purchase_order_id', $this->id)
-                ->where('material_id', $it->material_id)
-                ->sum('qty_received');
+            $receivedQty = (float) ($receivedByMaterial[$it->material_id] ?? 0);
 
             $orderedQty = (float) $it->qty_ordered;
             $remainingQty = max(0, $orderedQty - $receivedQty);
@@ -117,9 +209,11 @@ class PurchaseOrder extends Model
         $currentDoNumber = $this->delivery_order_number ? trim($this->delivery_order_number) : null;
         $isDoUsed = false;
         if ($currentDoNumber) {
-            $isDoUsed = DeliveryOrder::where('project_id', $this->project_id)
-                ->where('do_number', $currentDoNumber)
-                ->exists();
+            $isDoUsed = $usedDoNumbers !== null
+                ? isset($usedDoNumbers[$this->project_id.'|'.$currentDoNumber])
+                : DeliveryOrder::where('project_id', $this->project_id)
+                    ->where('do_number', $currentDoNumber)
+                    ->exists();
         }
 
         if (! $hasReceived) {

@@ -23,7 +23,7 @@
             <svg class="w-4 h-4 {{ $active === 'outstanding_po' ? 'text-amber-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span>PO Menggantung</span>
             @php
-                $tabPendingCount = $pendingPoCount ?? ($activeProjectId ? \App\Models\PurchaseOrder::where('project_id', $activeProjectId)->where('status', '!=', 'cancelled')->get()->filter(fn($p) => $p->getFulfillmentDetails()['has_pending'])->count() : 0);
+                $tabPendingCount = $pendingPoCount ?? \App\Models\PurchaseOrder::pendingCountForProject($activeProjectId);
             @endphp
             @if($tabPendingCount > 0)
                 <span class="px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-100 text-amber-800 border border-amber-300">

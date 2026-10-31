@@ -42,17 +42,21 @@ Route::middleware('auth')->group(function () {
     Route::post('/projects/switch', [DashboardController::class, 'switchProject'])->name('projects.switch');
 
     // 2. Manajemen Proyek & Wizard (Modul: projects)
-    Route::resource('projects', ProjectController::class)->middleware('module:projects');
+    Route::resource('projects', ProjectController::class)->except(['show'])->middleware('module:projects');
 
     // 3. Master Supplier & Rekanan (Modul: suppliers)
-    Route::resource('suppliers', SupplierController::class)->middleware('module:suppliers');
+    Route::resource('suppliers', SupplierController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('module:suppliers');
 
     // 3.1 Master Item, Material & Satuan (Modul: materials)
-    Route::post('materials/units', [MaterialController::class, 'storeUnit'])->name('materials.units.store');
-    Route::put('materials/units/{unit}', [MaterialController::class, 'updateUnit'])->name('materials.units.update');
-    Route::delete('materials/units/{unit}', [MaterialController::class, 'destroyUnit'])->name('materials.units.destroy');
-    Route::post('materials/{material}/toggle-status', [MaterialController::class, 'toggleStatus'])->name('materials.toggle_status');
-    Route::resource('materials', MaterialController::class);
+    // Katalog dapat dilihat oleh pengguna RAB/Supplier (sesuai menu sidebar), perubahan hanya modul materials
+    Route::get('materials', [MaterialController::class, 'index'])->middleware('module:materials,suppliers,rab')->name('materials.index');
+    Route::middleware('module:materials')->group(function () {
+        Route::post('materials/units', [MaterialController::class, 'storeUnit'])->name('materials.units.store');
+        Route::put('materials/units/{unit}', [MaterialController::class, 'updateUnit'])->name('materials.units.update');
+        Route::delete('materials/units/{unit}', [MaterialController::class, 'destroyUnit'])->name('materials.units.destroy');
+        Route::post('materials/{material}/toggle-status', [MaterialController::class, 'toggleStatus'])->name('materials.toggle_status');
+        Route::resource('materials', MaterialController::class)->only(['store', 'update', 'destroy']);
+    });
 
     // 4. Pembuatan RAB (Modul: rab)
     Route::prefix('rab')->name('rab.')->middleware('module:rab')->group(function () {
@@ -171,7 +175,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/cost', [CostComparisonController::class, 'index'])->middleware('module:cost')->name('cost.index');
 
     // 10. Manajemen Pengguna & Hak Akses (Modul: users)
-    Route::resource('users', UserController::class)->middleware('module:users');
+    Route::resource('users', UserController::class)->except(['show'])->middleware('module:users');
 
     // Opsional: Role switcher untuk testing jika masih dibutuhkan oleh superadmin
     Route::post('/role/switch', [RoleSimulationController::class, 'switchRole'])->name('role.switch');
@@ -180,9 +184,11 @@ Route::middleware('auth')->group(function () {
 // Fallback direct route untuk melayani file bukti fisik dari storage/app/public jika symlink terkendala
 Route::get('/storage/{path}', function (string $path) {
     $cleanPath = str_replace(['..', "\0"], '', $path);
-    $fullPath = storage_path('app/public/'.$cleanPath);
+    $basePath = realpath(storage_path('app/public'));
+    $fullPath = realpath(storage_path('app/public/'.$cleanPath));
 
-    if (! file_exists($fullPath) || is_dir($fullPath)) {
+    // Pastikan file benar-benar berada di dalam storage/app/public (cegah path traversal)
+    if (! $basePath || ! $fullPath || ! str_starts_with($fullPath, $basePath.DIRECTORY_SEPARATOR) || is_dir($fullPath)) {
         abort(404, 'File lampiran atau bukti fisik tidak ditemukan.');
     }
 

@@ -29,13 +29,22 @@ class AlertController extends Controller
             $query->where('status', $request->status);
         }
 
-        $alerts = $query->orderByDesc('created_at')->paginate(20);
+        $alerts = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        // Satu query agregat untuk seluruh angka ringkasan
+        $summary = Alert::where('project_id', $project->id)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END) as unread")
+            ->selectRaw("SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical")
+            ->selectRaw("SUM(CASE WHEN severity = 'warning' THEN 1 ELSE 0 END) as warning")
+            ->toBase()
+            ->first();
 
         $counts = [
-            'total' => Alert::where('project_id', $project->id)->count(),
-            'unread' => Alert::where('project_id', $project->id)->where('status', 'unread')->count(),
-            'critical' => Alert::where('project_id', $project->id)->where('severity', 'critical')->count(),
-            'warning' => Alert::where('project_id', $project->id)->where('severity', 'warning')->count(),
+            'total' => (int) ($summary->total ?? 0),
+            'unread' => (int) ($summary->unread ?? 0),
+            'critical' => (int) ($summary->critical ?? 0),
+            'warning' => (int) ($summary->warning ?? 0),
         ];
 
         return view('alerts.index', compact('project', 'projects', 'alerts', 'counts'));

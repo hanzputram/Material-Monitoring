@@ -202,11 +202,15 @@ class EquipmentController extends Controller
             'items.*.notes' => 'nullable|string',
         ]);
 
+        $masters = EquipmentMaster::whereIn('id', collect($validated['items'])->pluck('equipment_master_id')->unique())
+            ->get()
+            ->keyBy('id');
+
         $savedCount = 0;
         foreach ($validated['items'] as $itemData) {
             // Only save if item was checked/selected
             if (! empty($itemData['selected'])) {
-                $master = EquipmentMaster::find($itemData['equipment_master_id']);
+                $master = $masters->get($itemData['equipment_master_id']);
                 $rentalRate = (isset($itemData['rental_rate']) && $itemData['rental_rate'] !== '')
                     ? $itemData['rental_rate']
                     : ($master?->price ?? 0);

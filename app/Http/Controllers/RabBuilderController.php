@@ -11,6 +11,7 @@ use App\Models\RabNode;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class RabBuilderController extends Controller
 {
@@ -26,26 +27,16 @@ class RabBuilderController extends Controller
         session(['active_project_id' => $project->id]);
 
         $units = Unit::orderBy('name')->get();
-        $materials = Material::where('is_active', true)->orderBy('name')->get();
+        $materials = Material::with('defaultUnit')->where('is_active', true)->orderBy('name')->get();
 
         // Eager load 5 levels plus sub-breakdown materials
-        $rootNodes = RabNode::with([
-            'children.children.rabItems.materials.material.defaultUnit',
-            'children.children.rabItems.materials.breakdowns.material.defaultUnit',
-            'children.children.rabItems.materials.breakdowns.unit',
-            'children.children.rabItems.materials.unit',
-            'children.children.rabItems.unit',
-            'children.rabItems.materials.material.defaultUnit',
-            'children.rabItems.materials.breakdowns.material.defaultUnit',
-            'children.rabItems.materials.breakdowns.unit',
-            'children.rabItems.materials.unit',
-            'children.rabItems.unit',
-            'rabItems.materials.material.defaultUnit',
-            'rabItems.materials.breakdowns.material.defaultUnit',
-            'rabItems.materials.breakdowns.unit',
-            'rabItems.materials.unit',
-            'rabItems.unit',
-        ])
+        $rootNodes = RabNode::with(RabNode::treeRelations([
+            'materials.material.defaultUnit',
+            'materials.breakdowns.material.defaultUnit',
+            'materials.breakdowns.unit',
+            'materials.unit',
+            'unit',
+        ]))
             ->where('project_id', $project->id)
             ->whereNull('parent_id')
             ->orderBy('sort_order')
@@ -53,7 +44,8 @@ class RabBuilderController extends Controller
 
         // Items with BOM available for cloning
         $itemsWithBom = RabItem::whereHas('materials')
-            ->with(['rabNode.project', 'materials.material'])
+            ->whereHas('rabNode.project')
+            ->with(['rabNode.project', 'materials'])
             ->get();
 
         return view('rab.builder', compact(
@@ -77,6 +69,18 @@ class RabBuilderController extends Controller
         ]);
 
         $project = Project::findOrFail($validated['project_id']);
+        $validated['parent_id'] = $validated['parent_id'] ?? null;
+        $validated['level'] = (int) $validated['level'];
+
+        // Parent wajib berada di proyek yang sama dan tepat satu level di atasnya
+        if ($validated['level'] > 1) {
+            $parent = $validated['parent_id'] ? RabNode::find($validated['parent_id']) : null;
+            if (! $parent || $parent->project_id !== $project->id || $parent->level !== $validated['level'] - 1) {
+                return back()->withInput()->with('error', 'Induk kategori tidak valid untuk level yang dipilih.');
+            }
+        } else {
+            $validated['parent_id'] = null;
+        }
 
         // Auto-generate code if empty
         if (empty($validated['code'])) {
@@ -89,8 +93,8 @@ class RabBuilderController extends Controller
 
         $validated['sort_order'] = $sortOrder;
 
+        // Node baru bersubtotal 0, sehingga tidak perlu rekalkulasi seluruh proyek
         $node = RabNode::create($validated);
-        $project->recalculateAllSubtotals();
 
         return redirect()->route('rab.builder', ['project_id' => $project->id])
             ->with('success', "Kategori '{$node->code} - {$node->name}' berhasil ditambahkan!");
@@ -107,8 +111,8 @@ class RabBuilderController extends Controller
             $validated['code'] = $node->code;
         }
 
+        // Hanya kode/nama yang berubah, subtotal tidak terpengaruh
         $node->update($validated);
-        $node->project->recalculateAllSubtotals();
 
         return redirect()->back()->with('success', "Kategori '{$node->code} - {$node->name}' berhasil diperbarui!");
     }
@@ -117,9 +121,10 @@ class RabBuilderController extends Controller
     {
         $project = $node->project;
         $name = $node->name;
+
+        // Event "deleted" pada RabNode sudah menghitung ulang realisasi material proyek
         $node->delete();
-        $project->recalculateAllSubtotals();
-        MaterialRealization::recalculateAllForProject($project->id);
+        $project?->recalculateAllSubtotals();
 
         return redirect()->back()->with('success', "Kategori '{$name}' berhasil dihapus.");
     }
@@ -147,8 +152,8 @@ class RabBuilderController extends Controller
         $validated['sort_order'] = $node->rabItems()->count() + 1;
         $validated['is_composite'] = false;
 
+        // Event "saved" pada RabItem menghitung subtotal node (bubble-up) & cost realization
         $item = RabItem::create($validated);
-        $node->project->recalculateAllSubtotals();
 
         return redirect()->route('rab.builder', ['project_id' => $node->project_id])
             ->with('success', "Item pekerjaan '{$item->name}' berhasil ditambahkan!");
@@ -169,21 +174,22 @@ class RabBuilderController extends Controller
         }
 
         $validated['total_price'] = (float) $validated['volume'] * (float) $validated['unit_price'];
+
+        // Event "saved" pada RabItem menghitung subtotal node (bubble-up) & cost realization
         $item->update($validated);
-        $item->rabNode->project->recalculateAllSubtotals();
 
         return redirect()->back()->with('success', "Item pekerjaan '{$item->name}' berhasil diperbarui!");
     }
 
     public function destroyItem(RabItem $item)
     {
-        $project = $item->rabNode->project;
+        $projectId = $item->rabNode->project_id;
         $name = $item->name;
-        $item->delete();
-        $project->recalculateAllSubtotals();
-        MaterialRealization::recalculateAllForProject($project->id);
 
-        return redirect()->route('rab.builder', ['project_id' => $project->id])
+        // Event "deleted" pada RabItem menghitung ulang subtotal, cost & realisasi material proyek
+        $item->delete();
+
+        return redirect()->route('rab.builder', ['project_id' => $projectId])
             ->with('success', "Item '{$name}' berhasil dihapus.");
     }
 
@@ -274,17 +280,43 @@ class RabBuilderController extends Controller
 
         $source = RabItem::with('materials')->findOrFail($request->source_item_id);
 
-        foreach ($source->materials as $mat) {
-            RabItemMaterial::create([
-                'rab_item_id' => $item->id,
-                'material_id' => $mat->material_id,
-                'volume' => $mat->volume,
-                'unit_id' => $mat->unit_id,
-                'unit_price' => $mat->unit_price,
-                'total_price' => $mat->total_price,
-                'input_by' => Auth::id(),
-            ]);
-        }
+        DB::transaction(function () use ($source, $item) {
+            // Salin BOM beserta hirarki breakdown (parent_id dipetakan ke baris hasil salinan),
+            // agar rincian tidak berubah menjadi material root dan kuota tidak terhitung ganda.
+            $idMap = [];
+            $pending = $source->materials->sortBy('id')->values();
+
+            while ($pending->isNotEmpty()) {
+                $next = $pending->filter(fn ($mat) => ! $mat->parent_id || isset($idMap[$mat->parent_id]) || ! $source->materials->contains('id', $mat->parent_id));
+                if ($next->isEmpty()) {
+                    break;
+                }
+
+                foreach ($next as $mat) {
+                    $copy = RabItemMaterial::createQuietly([
+                        'rab_item_id' => $item->id,
+                        'material_id' => $mat->material_id,
+                        'parent_id' => $mat->parent_id ? ($idMap[$mat->parent_id] ?? null) : null,
+                        'volume' => $mat->volume,
+                        'unit_id' => $mat->unit_id,
+                        'unit_price' => $mat->unit_price,
+                        'total_price' => $mat->total_price,
+                        'notes' => $mat->notes,
+                        'input_by' => Auth::id(),
+                    ]);
+                    $idMap[$mat->id] = $copy->id;
+                }
+
+                $pending = $pending->diffKeys($next);
+            }
+
+            if (! empty($idMap)) {
+                $item->is_composite = true;
+                $item->saveQuietly();
+            }
+
+            MaterialRealization::recalculateAllForProject($item->rabNode->project_id);
+        });
 
         return redirect()->route('rab.builder', ['project_id' => $item->rabNode->project_id])
             ->with('success', "Breakdown BOM dari '{$source->name}' berhasil diduplikasi ke '{$item->name}'!");

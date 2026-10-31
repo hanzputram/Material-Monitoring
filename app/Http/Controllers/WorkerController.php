@@ -69,7 +69,10 @@ class WorkerController extends Controller
 
         $borongans = $boronganQuery->with('panjars')->orderByDesc('contract_amount')->get();
 
-        $allProjectBorongans = MandorBorongan::where('project_id', $project->id)->get();
+        // Tanpa filter, daftar kontrak sudah berisi seluruh borongan proyek: tidak perlu query ulang
+        $allProjectBorongans = (empty($search) && (empty($statusFilter) || $statusFilter === 'all'))
+            ? $borongans
+            : MandorBorongan::where('project_id', $project->id)->get();
         $totalContract = (float) $allProjectBorongans->sum('contract_amount');
         $totalPanjar = (float) $allProjectBorongans->sum('panjar_amount');
         $totalNet = max(0, $totalContract - $totalPanjar);
@@ -174,7 +177,7 @@ class WorkerController extends Controller
             'progress_percent' => 'nullable|integer|min:0|max:100',
             'status' => 'required|in:active,completed,hold',
             'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -204,7 +207,7 @@ class WorkerController extends Controller
             'progress_percent' => 'nullable|integer|min:0|max:100',
             'status' => 'required|in:active,completed,hold',
             'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -484,10 +487,14 @@ class WorkerController extends Controller
             'items.*.notes' => 'nullable|string|max:500',
         ]);
 
+        $workers = Worker::whereIn('id', collect($validated['items'])->pluck('worker_id')->unique())
+            ->get()
+            ->keyBy('id');
+
         $savedCount = 0;
         foreach ($validated['items'] as $itemData) {
             if (! empty($itemData['selected'])) {
-                $worker = Worker::find($itemData['worker_id']);
+                $worker = $workers->get($itemData['worker_id']);
                 $dailyWage = (isset($itemData['daily_wage']) && $itemData['daily_wage'] !== '')
                     ? (float) $itemData['daily_wage']
                     : (float) ($worker?->daily_rate ?? 0);

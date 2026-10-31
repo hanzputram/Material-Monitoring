@@ -35,6 +35,27 @@ class CostRealization extends Model
         return $this->belongsTo(RabItem::class);
     }
 
+    /**
+     * Sinkronkan budget_amount seluruh item RAB proyek dalam satu upsert massal.
+     */
+    public static function syncBudgetsForProject(int $projectId): void
+    {
+        $rows = RabItem::query()
+            ->join('rab_nodes', 'rab_nodes.id', '=', 'rab_items.rab_node_id')
+            ->where('rab_nodes.project_id', $projectId)
+            ->get(['rab_items.id', 'rab_items.total_price'])
+            ->map(fn ($item) => [
+                'project_id' => $projectId,
+                'rab_item_id' => $item->id,
+                'budget_amount' => (float) $item->total_price,
+            ])
+            ->all();
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            static::upsert($chunk, ['project_id', 'rab_item_id'], ['budget_amount', 'updated_at']);
+        }
+    }
+
     public function updateActual(float $actualAmount): void
     {
         $this->actual_amount = $actualAmount;

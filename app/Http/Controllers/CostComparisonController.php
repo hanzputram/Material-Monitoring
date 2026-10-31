@@ -21,17 +21,11 @@ class CostComparisonController extends Controller
         session(['active_project_id' => $project->id]);
 
         // 1. Hierarchy roll-up
-        $rootNodes = RabNode::with([
-            'children.children.rabItems.costRealization',
-            'children.children.rabItems.purchaseOrderItems.purchaseOrder',
-            'children.children.rabItems.unit',
-            'children.rabItems.costRealization',
-            'children.rabItems.purchaseOrderItems.purchaseOrder',
-            'children.rabItems.unit',
-            'rabItems.costRealization',
-            'rabItems.purchaseOrderItems.purchaseOrder',
-            'rabItems.unit',
-        ])
+        $rootNodes = RabNode::with(RabNode::treeRelations([
+            'costRealization',
+            'purchaseOrderItems.purchaseOrder',
+            'unit',
+        ]))
             ->where('project_id', $project->id)
             ->whereNull('parent_id')
             ->orderBy('sort_order')

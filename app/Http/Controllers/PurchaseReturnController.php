@@ -61,8 +61,8 @@ class PurchaseReturnController extends Controller
 
         $suppliers = Supplier::orderBy('name')->get();
         $units = Unit::orderBy('name')->get();
-        $materials = Material::where('is_active', true)->orderBy('name')->get();
-        $deliveryOrders = DeliveryOrder::where('project_id', $project->id)->orderByDesc('do_date')->get();
+        $materials = Material::with('defaultUnit')->where('is_active', true)->orderBy('name')->get();
+        $deliveryOrders = DeliveryOrder::with('supplier')->where('project_id', $project->id)->orderByDesc('do_date')->get();
 
         $returns = PurchaseReturn::with([
             'supplier',
@@ -168,7 +168,10 @@ class PurchaseReturnController extends Controller
             }
 
             // Sinkronkan realisasi material proyek agar kuota terpakai dikurangi barang retur
-            $purchaseReturn->syncRealizations();
+            // (sekali per material unik walaupun material muncul di beberapa baris)
+            foreach (collect($validated['items'])->pluck('material_id')->unique() as $materialId) {
+                MaterialRealization::recalculateForProjectMaterial((int) $validated['project_id'], (int) $materialId);
+            }
         });
 
         return redirect()->route('procurement.returns.index', ['project_id' => $validated['project_id']])

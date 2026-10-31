@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\RabItemMaterial;
+use App\Models\RabNode;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -37,9 +38,19 @@ class DashboardController extends Controller
         $costVariance = $totalRealization - $totalRab;
         $costVariancePct = $totalRab > 0 ? round(($costVariance / $totalRab) * 100, 2) : 0;
 
+        // Pohon RAB beserta item, BOM, dan data biaya aktual dimuat sekali (bukan lazy per node)
+        $currentProject->load([
+            'rootRabNodes' => fn ($q) => $q->with(RabNode::treeRelations([
+                'materials.breakdowns',
+                'costRealization',
+                'purchaseOrderItems.purchaseOrder',
+            ])),
+        ]);
+
         $realizations = MaterialRealization::with(['material.defaultUnit', 'project'])
             ->where('project_id', $currentProject->id)
             ->get();
+        $realizationsByMaterial = $realizations->keyBy('material_id');
 
         $stats = [
             'total_rab' => $totalRab,
@@ -97,7 +108,7 @@ class DashboardController extends Controller
                     $itemMats = collect([$im])->merge($im->breakdowns);
                     foreach ($itemMats as $m) {
                         if (! isset($rootDirectMats[$m->material_id])) {
-                            $rel = $realizations->firstWhere('material_id', $m->material_id);
+                            $rel = $realizationsByMaterial->get($m->material_id);
                             if ($rel) {
                                 $rel->rab_category_name = $root->name;
                                 $rel->rab_category_code = $root->code;
@@ -128,7 +139,7 @@ class DashboardController extends Controller
                         $itemMats = collect([$im])->merge($im->breakdowns);
                         foreach ($itemMats as $m) {
                             if (! isset($subDirectMats[$m->material_id])) {
-                                $rel = $realizations->firstWhere('material_id', $m->material_id);
+                                $rel = $realizationsByMaterial->get($m->material_id);
                                 if ($rel) {
                                     $rel->rab_category_name = $root->name;
                                     $rel->rab_category_code = $root->code;
@@ -159,7 +170,7 @@ class DashboardController extends Controller
                             $itemMats = collect([$im])->merge($im->breakdowns);
                             foreach ($itemMats as $m) {
                                 if (! isset($subSubMats[$m->material_id])) {
-                                    $rel = $realizations->firstWhere('material_id', $m->material_id);
+                                    $rel = $realizationsByMaterial->get($m->material_id);
                                     if ($rel) {
                                         $rel->rab_category_name = $root->name;
                                         $rel->rab_category_code = $root->code;
@@ -196,20 +207,29 @@ class DashboardController extends Controller
 
         $allMappedMaterialIds = array_values(array_unique(array_merge($allMappedMaterialIds, $dbRabMaterialIds)));
 
-        // Lengkapi data kategori untuk realization yang ada dalam RAB proyek
-        foreach ($realizations as $rel) {
-            if (empty($rel->rab_category_name) && in_array($rel->material_id, $allMappedMaterialIds)) {
-                $rim = RabItemMaterial::with(['rabItem.rabNode'])
-                    ->whereHas('rabItem.rabNode', fn ($q) => $q->where('project_id', $currentProject->id))
-                    ->where('material_id', $rel->material_id)
-                    ->first();
-                if ($rim && $rim->rabItem && $rim->rabItem->rabNode) {
-                    $node = $rim->rabItem->rabNode;
-                    $curr = $node;
-                    while ($curr->parent) {
-                        $curr = $curr->parent;
+        // Lengkapi data kategori untuk realization yang ada dalam RAB proyek (batch, bukan query per material)
+        $unmappedRealizations = $realizations->filter(
+            fn ($rel) => empty($rel->rab_category_name) && in_array($rel->material_id, $allMappedMaterialIds)
+        );
+
+        if ($unmappedRealizations->isNotEmpty()) {
+            $rimByMaterial = RabItemMaterial::with('rabItem')
+                ->whereHas('rabItem.rabNode', fn ($q) => $q->where('project_id', $currentProject->id))
+                ->whereIn('material_id', $unmappedRealizations->pluck('material_id')->unique()->values())
+                ->orderBy('id')
+                ->get()
+                ->unique('material_id')
+                ->keyBy('material_id');
+            $projectNodes = RabNode::where('project_id', $currentProject->id)->get()->keyBy('id');
+
+            foreach ($unmappedRealizations as $rel) {
+                $rim = $rimByMaterial->get($rel->material_id);
+                $node = $rim?->rabItem ? $projectNodes->get($rim->rabItem->rab_node_id) : null;
+                if ($node) {
+                    $rootNode = $node;
+                    while ($rootNode->parent_id && $projectNodes->has($rootNode->parent_id)) {
+                        $rootNode = $projectNodes->get($rootNode->parent_id);
                     }
-                    $rootNode = $curr;
                     $rel->rab_category_name = $rootNode->name;
                     $rel->rab_category_code = $rootNode->code;
                     $rel->rab_category_full = $rootNode->code.'. '.$rootNode->name;
@@ -251,7 +271,7 @@ class DashboardController extends Controller
         foreach ($allNonRabMaterialIds as $matId) {
             $mPoItems = $nonRabPoItems->where('material_id', $matId);
             $mDoItems = $nonRabDoItems->where('material_id', $matId);
-            $mRealization = $realizations->firstWhere('material_id', $matId);
+            $mRealization = $realizationsByMaterial->get($matId);
 
             $poQty = (float) $mPoItems->sum('qty_ordered');
             $poCost = (float) $mPoItems->sum(fn ($it) => (float) $it->qty_ordered * (float) $it->unit_price);
@@ -330,24 +350,28 @@ class DashboardController extends Controller
         $vehicleOpsMaterials = Material::where('category', 'operasional_kendaraan')
             ->with('defaultUnit')
             ->orderBy('code')
+            ->get();
+
+        // PO & DO armada dimuat sekali untuk seluruh material, lalu dikelompokkan di memori
+        $vehiclePoItems = PurchaseOrderItem::whereIn('material_id', $vehicleOpsMaterials->modelKeys())
+            ->whereHas('purchaseOrder', fn ($q) => $q->where('project_id', $currentProject->id))
+            ->with(['purchaseOrder.supplier', 'unit'])
             ->get()
-            ->map(function ($mat) use ($currentProject) {
-                $poItems = PurchaseOrderItem::where('material_id', $mat->id)
-                    ->whereHas('purchaseOrder', function ($q) use ($currentProject) {
-                        $q->where('project_id', $currentProject->id);
-                    })
-                    ->with(['purchaseOrder.supplier', 'unit'])
-                    ->get();
+            ->groupBy('material_id');
+        $vehicleDoItems = DeliveryOrderItem::whereIn('material_id', $vehicleOpsMaterials->modelKeys())
+            ->whereHas('deliveryOrder', fn ($q) => $q->where('project_id', $currentProject->id))
+            ->with(['deliveryOrder.supplier', 'unit'])
+            ->get()
+            ->groupBy('material_id');
+
+        $vehicleOpsMaterials = $vehicleOpsMaterials
+            ->map(function ($mat) use ($vehiclePoItems, $vehicleDoItems, $realizationsByMaterial) {
+                $poItems = $vehiclePoItems->get($mat->id, collect());
 
                 $poQty = (float) $poItems->sum('qty_ordered');
                 $poCost = (float) $poItems->sum(fn ($it) => (float) $it->qty_ordered * (float) $it->unit_price);
 
-                $doItems = DeliveryOrderItem::where('material_id', $mat->id)
-                    ->whereHas('deliveryOrder', function ($q) use ($currentProject) {
-                        $q->where('project_id', $currentProject->id);
-                    })
-                    ->with(['deliveryOrder.supplier', 'unit'])
-                    ->get();
+                $doItems = $vehicleDoItems->get($mat->id, collect());
 
                 $doQty = (float) $doItems->sum('qty_received');
 
@@ -365,29 +389,25 @@ class DashboardController extends Controller
                 $mat->pos = $poItems->map(fn ($it) => $it->purchaseOrder)->filter()->unique('id')->values();
                 $mat->dos = $doItems->map(fn ($it) => $it->deliveryOrder)->filter()->unique('id')->values();
 
-                $mat->realization = MaterialRealization::where('project_id', $currentProject->id)
-                    ->where('material_id', $mat->id)
-                    ->first();
+                $mat->realization = $realizationsByMaterial->get($mat->id);
 
                 return $mat;
             });
 
         // 9. PO Menggantung / Belum Diterima Sepenuhnya di Lapangan
-        $pendingPos = PurchaseOrder::where('project_id', $currentProject->id)
-            ->where('status', '!=', 'cancelled')
-            ->with(['supplier', 'creator', 'items.material.defaultUnit', 'deliveryOrders'])
-            ->get()
-            ->map(function ($po) {
-                $po->fulfillment = $po->getFulfillmentDetails();
-
-                return $po;
-            })
+        $pendingPos = PurchaseOrder::attachFulfillment(
+            PurchaseOrder::where('project_id', $currentProject->id)
+                ->where('status', '!=', 'cancelled')
+                ->with(['supplier', 'creator', 'items.material.defaultUnit', 'items.unit', 'deliveryOrders'])
+                ->get()
+        )
             ->filter(fn ($po) => $po->fulfillment['has_pending'])
             ->values();
 
         $stats['pending_pos_count'] = $pendingPos->count();
         $stats['pending_pos_partial_count'] = $pendingPos->where('fulfillment.is_partial', true)->count();
         $stats['pending_pos_needs_do'] = $pendingPos->where('fulfillment.needs_new_do_number', true)->count();
+        $pendingPoCount = $stats['pending_pos_count'];
 
         return view('dashboard.index', compact(
             'projects',
@@ -402,7 +422,8 @@ class DashboardController extends Controller
             'chartActuals',
             'recentAlerts',
             'recentDos',
-            'pendingPos'
+            'pendingPos',
+            'pendingPoCount'
         ));
     }
 
@@ -482,19 +503,17 @@ class DashboardController extends Controller
         session(['active_project_id' => $newProjectId]);
 
         $previousUrl = url()->previous();
+        $parsedUrl = $previousUrl ? parse_url($previousUrl) : [];
 
-        if ($previousUrl) {
-            $parsedUrl = parse_url($previousUrl);
+        // Hanya ikuti URL sebelumnya bila berasal dari host aplikasi ini (cegah open redirect via Referer)
+        $isInternal = ! isset($parsedUrl['host']) || $parsedUrl['host'] === $request->getHost();
 
-            // 1. If previous URL was viewing/editing a specific project resource (e.g. /projects/2 or /projects/2/edit)
-            if (isset($parsedUrl['path']) && preg_match('#^/projects/\d+(/edit)?$#', $parsedUrl['path'], $matches)) {
-                $suffix = $matches[1] ?? '';
-                $newPath = '/projects/'.$newProjectId.$suffix;
-                $newUrl = ($parsedUrl['scheme'] ?? 'http').'://'.($parsedUrl['host'] ?? 'localhost')
-                    .(isset($parsedUrl['port']) ? ':'.$parsedUrl['port'] : '')
-                    .$newPath;
+        if ($isInternal) {
+            $path = $request->getSchemeAndHttpHost().($parsedUrl['path'] ?? '/');
 
-                return redirect($newUrl)->with('success', 'Proyek berhasil dialihkan.');
+            // 1. If previous URL was editing a specific project resource (e.g. /projects/2/edit)
+            if (preg_match('#/projects/\d+(/edit)?$#', $parsedUrl['path'] ?? '')) {
+                return redirect()->route('projects.edit', $newProjectId)->with('success', 'Proyek berhasil dialihkan.');
             }
 
             // 2. If previous URL contains a project_id query parameter, update it to the new project ID
@@ -502,18 +521,15 @@ class DashboardController extends Controller
                 parse_str($parsedUrl['query'], $queryParams);
                 if (isset($queryParams['project_id'])) {
                     $queryParams['project_id'] = $newProjectId;
-                    $newQuery = http_build_query($queryParams);
-                    $newUrl = ($parsedUrl['scheme'] ?? 'http').'://'.($parsedUrl['host'] ?? 'localhost')
-                        .(isset($parsedUrl['port']) ? ':'.$parsedUrl['port'] : '')
-                        .($parsedUrl['path'] ?? '/')
-                        .($newQuery ? '?'.$newQuery : '')
-                        .(isset($parsedUrl['fragment']) ? '#'.$parsedUrl['fragment'] : '');
 
-                    return redirect($newUrl)->with('success', 'Proyek berhasil dialihkan.');
+                    return redirect($path.'?'.http_build_query($queryParams).(isset($parsedUrl['fragment']) ? '#'.$parsedUrl['fragment'] : ''))
+                        ->with('success', 'Proyek berhasil dialihkan.');
                 }
             }
+
+            return redirect()->to($previousUrl)->with('success', 'Proyek berhasil dialihkan.');
         }
 
-        return redirect()->back()->with('success', 'Proyek berhasil dialihkan.');
+        return redirect()->route('dashboard')->with('success', 'Proyek berhasil dialihkan.');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -65,25 +66,137 @@ class MaterialRealization extends Model
             throw new \InvalidArgumentException('Project or Material not found');
         }
 
-        // 1. Calculate planned_qty from rab_item_materials in this project
-        // Hanya hitung material daun (leaf), jika suatu material hasil jadi sudah di-breakdown,
-        // rincian komponen breakdown-lah yang dihitung kuotanya.
-        $plannedQty = (float) RabItemMaterial::whereDoesntHave('breakdowns')
-            ->whereHas('rabItem.rabNode', function ($query) use ($projectId) {
-                $query->where('project_id', $projectId);
-            })->where('material_id', $materialId)->sum('volume');
+        $quantities = self::aggregateQuantities($projectId, [$materialId]);
+        $existing = self::where('project_id', $projectId)->where('material_id', $materialId)->first();
 
-        // 2. Calculate actual_qty from validated delivery orders minus any completed returns
-        $receivedQty = (float) DeliveryOrderItem::whereHas('deliveryOrder', function ($query) use ($projectId) {
-            $query->where('project_id', $projectId)
-                ->where('status', 'validated');
-        })->where('material_id', $materialId)->sum('qty_received');
+        return self::applyRecalculation($project, $material, $quantities, $existing);
+    }
 
-        $returnedQty = (float) PurchaseReturnItem::whereHas('purchaseReturn', function ($query) use ($projectId) {
-            $query->where('project_id', $projectId)
-                ->where('status', 'completed');
-        })->where('material_id', $materialId)->sum('qty_returned');
+    public static function recalculateAllForProject(int $projectId): void
+    {
+        $project = Project::find($projectId);
+        if (! $project) {
+            return;
+        }
 
+        // Get all materials used in this project's RAB (leaf) or DOs
+        $materialIdsFromRab = self::projectRabMaterialsQuery($projectId)
+            ->whereNotExists(self::breakdownExistsSubquery())
+            ->distinct()
+            ->pluck('rab_item_materials.material_id')
+            ->all();
+
+        $materialIdsFromDo = DeliveryOrderItem::query()
+            ->join('delivery_orders', 'delivery_orders.id', '=', 'delivery_order_items.delivery_order_id')
+            ->where('delivery_orders.project_id', $projectId)
+            ->distinct()
+            ->pluck('delivery_order_items.material_id')
+            ->all();
+
+        $allMaterialIds = array_values(array_unique(array_map('intval', array_merge($materialIdsFromRab, $materialIdsFromDo))));
+
+        // Seluruh angka dihitung dengan beberapa query agregat untuk semua material sekaligus
+        $quantities = self::aggregateQuantities($projectId, $allMaterialIds);
+        $materials = Material::whereIn('id', $allMaterialIds)->get()->keyBy('id');
+        $existingRealizations = self::where('project_id', $projectId)->get()->keyBy('material_id');
+
+        foreach ($allMaterialIds as $materialId) {
+            $material = $materials->get($materialId);
+            if ($material) {
+                self::applyRecalculation($project, $material, $quantities, $existingRealizations->get($materialId));
+            }
+        }
+
+        // Clean up orphaned realizations no longer in either RAB or DO
+        $orphans = $existingRealizations->reject(fn ($realization) => in_array((int) $realization->material_id, $allMaterialIds, true));
+
+        if ($orphans->isNotEmpty()) {
+            $orphanIds = $orphans->modelKeys();
+            Alert::where('project_id', $projectId)
+                ->where('reference_type', self::class)
+                ->whereIn('reference_id', $orphanIds)
+                ->delete();
+            MaterialVarianceValidation::whereIn('material_realization_id', $orphanIds)->delete();
+            self::whereIn('id', $orphanIds)->delete();
+        }
+    }
+
+    /**
+     * Hitung planned / received / returned qty untuk sekumpulan material dalam satu proyek.
+     *
+     * @param  array<int, int>  $materialIds
+     * @return array{planned: array<int, float>, received: array<int, float>, returned: array<int, float>, parents: array<int, bool>}
+     */
+    protected static function aggregateQuantities(int $projectId, array $materialIds): array
+    {
+        $result = ['planned' => [], 'received' => [], 'returned' => [], 'parents' => []];
+        if (empty($materialIds)) {
+            return $result;
+        }
+
+        foreach (array_chunk($materialIds, 500) as $chunk) {
+            // 1. planned_qty: hanya material daun (leaf). Jika material hasil jadi sudah di-breakdown,
+            // rincian komponen breakdown-lah yang dihitung kuotanya.
+            $planned = self::projectRabMaterialsQuery($projectId)
+                ->whereIn('rab_item_materials.material_id', $chunk)
+                ->whereNotExists(self::breakdownExistsSubquery())
+                ->groupBy('rab_item_materials.material_id')
+                ->selectRaw('rab_item_materials.material_id as material_id, SUM(rab_item_materials.volume) as total')
+                ->pluck('total', 'material_id');
+
+            // 2. actual_qty: DO tervalidasi dikurangi retur yang selesai
+            $received = DeliveryOrderItem::query()
+                ->join('delivery_orders', 'delivery_orders.id', '=', 'delivery_order_items.delivery_order_id')
+                ->where('delivery_orders.project_id', $projectId)
+                ->where('delivery_orders.status', 'validated')
+                ->whereIn('delivery_order_items.material_id', $chunk)
+                ->groupBy('delivery_order_items.material_id')
+                ->selectRaw('delivery_order_items.material_id as material_id, SUM(delivery_order_items.qty_received) as total')
+                ->pluck('total', 'material_id');
+
+            $returned = PurchaseReturnItem::query()
+                ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
+                ->where('purchase_returns.project_id', $projectId)
+                ->where('purchase_returns.status', 'completed')
+                ->whereIn('purchase_return_items.material_id', $chunk)
+                ->groupBy('purchase_return_items.material_id')
+                ->selectRaw('purchase_return_items.material_id as material_id, SUM(purchase_return_items.qty_returned) as total')
+                ->pluck('total', 'material_id');
+
+            $parents = self::projectRabMaterialsQuery($projectId)
+                ->whereIn('rab_item_materials.material_id', $chunk)
+                ->whereExists(self::breakdownExistsSubquery())
+                ->distinct()
+                ->pluck('rab_item_materials.material_id');
+
+            foreach ($planned as $id => $total) {
+                $result['planned'][(int) $id] = (float) $total;
+            }
+            foreach ($received as $id => $total) {
+                $result['received'][(int) $id] = (float) $total;
+            }
+            foreach ($returned as $id => $total) {
+                $result['returned'][(int) $id] = (float) $total;
+            }
+            foreach ($parents as $id) {
+                $result['parents'][(int) $id] = true;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array{planned: array<int, float>, received: array<int, float>, returned: array<int, float>, parents: array<int, bool>}  $quantities
+     */
+    protected static function applyRecalculation(Project $project, Material $material, array $quantities, ?self $existing): self
+    {
+        $projectId = $project->id;
+        $materialId = $material->id;
+
+        $plannedQty = (float) ($quantities['planned'][$materialId] ?? 0);
+        $receivedQty = (float) ($quantities['received'][$materialId] ?? 0);
+        $returnedQty = (float) ($quantities['returned'][$materialId] ?? 0);
         $actualQty = max(0, $receivedQty - $returnedQty);
 
         // 3. Variance
@@ -96,14 +209,9 @@ class MaterialRealization extends Model
         }
 
         // 4. Status determination based on project thresholds
-        $isParentWithBreakdown = RabItemMaterial::where('material_id', $materialId)
-            ->whereHas('breakdowns')
-            ->whereHas('rabItem.rabNode', function ($query) use ($projectId) {
-                $query->where('project_id', $projectId);
-            })->exists();
+        $isParentWithBreakdown = $quantities['parents'][$materialId] ?? false;
 
         if ($isParentWithBreakdown && $plannedQty == 0 && $actualQty == 0) {
-            $existing = self::where('project_id', $projectId)->where('material_id', $materialId)->first();
             if ($existing) {
                 Alert::where('project_id', $projectId)
                     ->where('reference_type', self::class)
@@ -134,20 +242,18 @@ class MaterialRealization extends Model
             $status = 'kekurangan';
         }
 
-        $realization = self::updateOrCreate(
-            [
-                'project_id' => $projectId,
-                'material_id' => $materialId,
-            ],
-            [
-                'planned_qty' => $plannedQty,
-                'actual_qty' => $actualQty,
-                'variance_qty' => $varianceQty,
-                'variance_pct' => $variancePct,
-                'status' => $status,
-                'last_calculated_at' => Carbon::now(),
-            ]
-        );
+        $realization = $existing ?? new self([
+            'project_id' => $projectId,
+            'material_id' => $materialId,
+        ]);
+        $realization->fill([
+            'planned_qty' => $plannedQty,
+            'actual_qty' => $actualQty,
+            'variance_qty' => $varianceQty,
+            'variance_pct' => $variancePct,
+            'status' => $status,
+            'last_calculated_at' => Carbon::now(),
+        ])->save();
 
         // 5. Trigger alert if out of threshold
         if ($status !== 'normal') {
@@ -157,61 +263,48 @@ class MaterialRealization extends Model
                 ? "Material {$material->name} melebihi rencana RAB sebesar {$variancePct}% (Rencana: {$plannedQty}, Aktual: {$actualQty})"
                 : "Material {$material->name} kurang dari rencana RAB sebesar ".abs($variancePct)."% (Rencana: {$plannedQty}, Aktual: {$actualQty})";
 
-            Alert::updateOrCreate(
-                [
-                    'project_id' => $projectId,
-                    'type' => $type,
-                    'reference_type' => self::class,
-                    'reference_id' => $realization->id,
-                ],
-                [
+            $alert = Alert::firstOrNew([
+                'project_id' => $projectId,
+                'type' => $type,
+                'reference_type' => self::class,
+                'reference_id' => $realization->id,
+            ]);
+
+            // Alert yang sudah dibaca/diselesaikan hanya dibuka ulang bila kondisinya berubah
+            if (! $alert->exists || $alert->message !== $message || $alert->severity !== $severity) {
+                $alert->fill([
                     'message' => $message,
                     'severity' => $severity,
                     'status' => 'unread',
-                ]
-            );
+                ])->save();
+            }
         } else {
             // If back to normal, mark alerts resolved
             Alert::where('project_id', $projectId)
                 ->where('reference_type', self::class)
                 ->where('reference_id', $realization->id)
+                ->where('status', '!=', 'resolved')
                 ->update(['status' => 'resolved']);
         }
 
         return $realization;
     }
 
-    public static function recalculateAllForProject(int $projectId): void
+    /**
+     * Query dasar rab_item_materials milik suatu proyek (join langsung, bukan whereHas bertingkat).
+     */
+    protected static function projectRabMaterialsQuery(int $projectId): Builder
     {
-        // Get all materials used in this project's RAB or DOs
-        $materialIdsFromRab = RabItemMaterial::whereDoesntHave('breakdowns')
-            ->whereHas('rabItem.rabNode', function ($query) use ($projectId) {
-                $query->where('project_id', $projectId);
-            })->pluck('material_id')->toArray();
+        return RabItemMaterial::query()
+            ->join('rab_items', 'rab_items.id', '=', 'rab_item_materials.rab_item_id')
+            ->join('rab_nodes', 'rab_nodes.id', '=', 'rab_items.rab_node_id')
+            ->where('rab_nodes.project_id', $projectId);
+    }
 
-        $materialIdsFromDo = DeliveryOrderItem::whereHas('deliveryOrder', function ($query) use ($projectId) {
-            $query->where('project_id', $projectId);
-        })->pluck('material_id')->toArray();
-
-        $allMaterialIds = array_unique(array_merge($materialIdsFromRab, $materialIdsFromDo));
-
-        foreach ($allMaterialIds as $materialId) {
-            self::recalculateForProjectMaterial($projectId, $materialId);
-        }
-
-        // Clean up orphaned realizations no longer in either RAB or DO
-        $orphans = self::where('project_id', $projectId)
-            ->whereNotIn('material_id', $allMaterialIds)
-            ->get();
-
-        foreach ($orphans as $orphan) {
-            Alert::where('project_id', $projectId)
-                ->where('reference_type', self::class)
-                ->where('reference_id', $orphan->id)
-                ->delete();
-
-            $orphan->varianceValidations()->delete();
-            $orphan->delete();
-        }
+    protected static function breakdownExistsSubquery(): \Closure
+    {
+        return fn ($query) => $query->selectRaw('1')
+            ->from('rab_item_materials as breakdown_children')
+            ->whereColumn('breakdown_children.parent_id', 'rab_item_materials.id');
     }
 }

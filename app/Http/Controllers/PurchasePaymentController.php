@@ -136,12 +136,32 @@ class PurchasePaymentController extends Controller
             return back()->withInput()->with('error', 'Total pembayaran tidak boleh Rp 0.');
         }
 
+        // Faktur dimuat sekali; alokasi wajib milik proyek & supplier yang sama dan tidak melebihi sisa tagihan
+        $invoices = Invoice::whereIn('id', collect($validated['items'])->pluck('invoice_id')->unique())->get()->keyBy('id');
+        $allocations = [];
+        foreach ($validated['items'] as $itemData) {
+            $allocations[$itemData['invoice_id']] = ($allocations[$itemData['invoice_id']] ?? 0) + (float) $itemData['amount_paid'];
+        }
+
+        foreach ($allocations as $invoiceId => $allocated) {
+            $invoice = $invoices->get($invoiceId);
+            if (! $invoice
+                || (int) $invoice->project_id !== (int) $validated['project_id']
+                || (int) $invoice->supplier_id !== (int) $validated['supplier_id']) {
+                return back()->withInput()->with('error', 'Faktur yang dipilih harus milik proyek dan supplier yang sama dengan pembayaran.');
+            }
+
+            if ($allocated - $invoice->remaining_balance > 0.009) {
+                return back()->withInput()->with('error', "Alokasi pembayaran untuk faktur {$invoice->invoice_number} melebihi sisa tagihan (Rp ".number_format($invoice->remaining_balance, 0, ',', '.').').');
+            }
+        }
+
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
             $attachmentPath = $request->file('attachment')->store('payments', 'public');
         }
 
-        DB::transaction(function () use ($validated, $totalAmount, $attachmentPath, $user) {
+        DB::transaction(function () use ($validated, $totalAmount, $attachmentPath, $user, $invoices) {
             $payment = PurchasePayment::create([
                 'project_id' => $validated['project_id'],
                 'supplier_id' => $validated['supplier_id'],
@@ -161,11 +181,10 @@ class PurchasePaymentController extends Controller
                     'invoice_id' => $itemData['invoice_id'],
                     'amount_paid' => $itemData['amount_paid'],
                 ]);
+            }
 
-                $invoice = Invoice::find($itemData['invoice_id']);
-                if ($invoice) {
-                    $invoice->recalculatePaymentStatus();
-                }
+            foreach ($invoices as $invoice) {
+                $invoice->recalculatePaymentStatus();
             }
         });
 
@@ -202,12 +221,8 @@ class PurchasePaymentController extends Controller
             $purchasePayment->delete();
 
             // Rekalkulasi status pelunasan faktur yang terpengaruh
-            foreach ($affectedInvoiceIds as $invId) {
-                $invoice = Invoice::find($invId);
-                if ($invoice) {
-                    $invoice->recalculatePaymentStatus();
-                }
-            }
+            Invoice::whereIn('id', $affectedInvoiceIds)->get()
+                ->each(fn (Invoice $invoice) => $invoice->recalculatePaymentStatus());
         });
 
         return redirect()->route('finance.payments.index', ['project_id' => $projectId])

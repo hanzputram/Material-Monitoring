@@ -117,6 +117,10 @@ class Project extends Model
 
     public function getTotalRabAttribute(): float
     {
+        if ($this->relationLoaded('rootRabNodes')) {
+            return (float) $this->rootRabNodes->sum('subtotal_cache');
+        }
+
         return (float) $this->rootRabNodes()->sum('subtotal_cache');
     }
 
@@ -127,11 +131,38 @@ class Project extends Model
 
     public function recalculateAllSubtotals(): void
     {
-        // Bottom-up recalculation (level 3 -> level 2 -> level 1)
-        for ($lvl = 3; $lvl >= 1; $lvl--) {
-            $nodes = $this->rabNodes()->where('level', $lvl)->get();
-            foreach ($nodes as $node) {
-                $node->refreshSubtotal(false);
+        // Dua query agregat + roll-up bottom-up di memori (bukan 3 query per node)
+        $nodes = $this->rabNodes()->get();
+        if ($nodes->isEmpty()) {
+            return;
+        }
+
+        $itemTotals = RabItem::query()
+            ->whereIn('rab_node_id', $nodes->modelKeys())
+            ->groupBy('rab_node_id')
+            ->selectRaw('rab_node_id, SUM(total_price) as total')
+            ->pluck('total', 'rab_node_id');
+
+        $childrenByParent = $nodes->groupBy('parent_id');
+        $totals = [];
+        $compute = function (int $nodeId) use (&$compute, &$totals, $itemTotals, $childrenByParent): float {
+            if (isset($totals[$nodeId])) {
+                return $totals[$nodeId];
+            }
+
+            $total = (float) ($itemTotals[$nodeId] ?? 0);
+            foreach ($childrenByParent->get($nodeId, []) as $child) {
+                $total += $compute($child->id);
+            }
+
+            return $totals[$nodeId] = $total;
+        };
+
+        foreach ($nodes as $node) {
+            $total = round($compute($node->id), 2);
+            if (abs((float) $node->subtotal_cache - $total) > 0.001) {
+                $node->subtotal_cache = $total;
+                $node->saveQuietly();
             }
         }
     }

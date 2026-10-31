@@ -9,7 +9,6 @@ use App\Models\Material;
 use App\Models\MaterialRealization;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
 use App\Models\RabItem;
 use App\Models\Supplier;
 use App\Models\Unit;
@@ -17,6 +16,7 @@ use App\Services\PurchaseOrderPdfService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ProcurementController extends Controller
@@ -75,7 +75,7 @@ class ProcurementController extends Controller
         }
 
         $suppliers = Supplier::orderBy('name')->get();
-        $materials = Material::where('is_active', true)->orderBy('name')->get();
+        $materials = Material::with('defaultUnit')->where('is_active', true)->orderBy('name')->get();
         $units = Unit::orderBy('name')->get();
 
         $rabItems = RabItem::whereHas('rabNode', function ($q) use ($project) {
@@ -143,27 +143,39 @@ class ProcurementController extends Controller
             'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        $po = PurchaseOrder::create([
-            'project_id' => $validated['project_id'],
-            'supplier_id' => $validated['supplier_id'],
-            'po_number' => $validated['po_number'],
-            'po_date' => $validated['po_date'],
-            'delivery_order_number' => $validated['delivery_order_number'] ?? null,
-            'notes' => $validated['notes'],
-            'status' => 'sent',
-            'created_by' => Auth::id(),
-        ]);
+        // Item RAB yang dialokasikan wajib berasal dari proyek PO ini
+        $rabItemIds = collect($validated['items'])->pluck('rab_item_id')->filter()->unique();
+        if ($rabItemIds->isNotEmpty()) {
+            $validRabItemCount = RabItem::whereIn('id', $rabItemIds)
+                ->whereHas('rabNode', fn ($q) => $q->where('project_id', $validated['project_id']))
+                ->count();
+            if ($validRabItemCount !== $rabItemIds->count()) {
+                return back()->withInput()->with('error', 'Alokasi item RAB tidak valid: item RAB harus berasal dari proyek yang sama dengan PO.');
+            }
+        }
 
-        foreach ($validated['items'] as $item) {
-            PurchaseOrderItem::create([
-                'purchase_order_id' => $po->id,
+        $po = DB::transaction(function () use ($validated) {
+            $po = PurchaseOrder::create([
+                'project_id' => $validated['project_id'],
+                'supplier_id' => $validated['supplier_id'],
+                'po_number' => $validated['po_number'],
+                'po_date' => $validated['po_date'],
+                'delivery_order_number' => isset($validated['delivery_order_number']) ? trim($validated['delivery_order_number']) : null,
+                'notes' => $validated['notes'] ?? null,
+                'status' => 'sent',
+                'created_by' => Auth::id(),
+            ]);
+
+            $po->items()->createMany(collect($validated['items'])->map(fn ($item) => [
                 'material_id' => $item['material_id'],
                 'rab_item_id' => ! empty($item['rab_item_id']) ? $item['rab_item_id'] : null,
                 'qty_ordered' => $item['qty_ordered'],
                 'unit_id' => $item['unit_id'],
                 'unit_price' => $item['unit_price'],
-            ]);
-        }
+            ])->all());
+
+            return $po;
+        });
 
         return redirect()->route('procurement.po.index', ['project_id' => $po->project_id])
             ->with('success', "Pesanan Pembelian (PO) {$po->po_number} berhasil dibuat!");
@@ -241,7 +253,7 @@ class ProcurementController extends Controller
         }
 
         $suppliers = Supplier::orderBy('name')->get();
-        $materials = Material::where('is_active', true)->orderBy('name')->get();
+        $materials = Material::with('defaultUnit')->where('is_active', true)->orderBy('name')->get();
         $units = Unit::orderBy('name')->get();
 
         $deliveryOrders = DeliveryOrder::with([
@@ -257,18 +269,23 @@ class ProcurementController extends Controller
             ->get();
 
         $purchaseOrders = PurchaseOrder::where('project_id', $project->id)
-            ->with(['supplier', 'items.material.defaultUnit'])
+            ->with(['supplier', 'items.material.defaultUnit', 'items.unit'])
             ->orderByDesc('po_date')
             ->get();
 
+        // Qty diterima per PO & material dalam satu query (bukan satu query per item)
+        $receivedMap = PurchaseOrder::receivedQuantitiesFor($purchaseOrders->modelKeys());
+
         // Badge counters
         $poCount = Auth::user()->canReadPo()
-            ? PurchaseOrder::where('project_id', $project->id)->count()
+            ? $purchaseOrders->count()
             : 0;
         $invCount = Auth::user()->canReadInvoice()
             ? Invoice::where('project_id', $project->id)->count()
             : 0;
-        $pendingPoCount = $purchaseOrders->filter(fn ($p) => $p->getFulfillmentDetails()['has_pending'])->count();
+        $pendingPoCount = $purchaseOrders
+            ->filter(fn ($p) => $p->status !== 'cancelled' && $p->getFulfillmentDetails($receivedMap[$p->id] ?? [], [])['has_pending'])
+            ->count();
 
         // Kumpulkan nomor DO yang sudah pernah diterima di proyek ini agar TIDAK dapat diinput ulang
         $existingDoNumbers = $deliveryOrders
@@ -280,11 +297,9 @@ class ProcurementController extends Controller
         // Hanya tampilkan jadwal DO yang nomornya belum pernah diinput sebagai DO dan masih memiliki sisa barang
         $scheduledDeliveries = $purchaseOrders
             ->filter(fn ($po) => ! empty($po->delivery_order_number) && ! in_array(trim($po->delivery_order_number), $existingDoNumbers))
-            ->map(function ($po) {
-                $itemsWithRemaining = $po->items->map(function ($it) use ($po) {
-                    $receivedQty = (float) DeliveryOrderItem::where('purchase_order_id', $po->id)
-                        ->where('material_id', $it->material_id)
-                        ->sum('qty_received');
+            ->map(function ($po) use ($receivedMap) {
+                $itemsWithRemaining = $po->items->map(function ($it) use ($po, $receivedMap) {
+                    $receivedQty = (float) ($receivedMap[$po->id][$it->material_id] ?? 0);
                     $remaining = max(0, (float) $it->qty_ordered - $receivedQty);
 
                     return [
@@ -328,7 +343,8 @@ class ProcurementController extends Controller
             'purchaseOrders',
             'scheduledDeliveries',
             'poCount',
-            'invCount'
+            'invCount',
+            'pendingPoCount'
         ));
     }
 
@@ -386,38 +402,45 @@ class ProcurementController extends Controller
 
         $primaryPoId = ! empty($poIds) ? $poIds[0] : ($validated['purchase_order_id'] ?? null);
 
-        $do = DeliveryOrder::create([
-            'project_id' => $validated['project_id'],
-            'purchase_order_id' => $primaryPoId,
-            'supplier_id' => $validated['supplier_id'],
-            'do_number' => $validated['do_number'],
-            'do_date' => $validated['do_date'],
-            'attachment_path' => $filePath,
-            'received_by' => Auth::id(),
-            'status' => 'validated',
-            'notes' => $validated['notes'] ?? null,
-        ]);
-
-        if (! empty($poIds)) {
-            $do->purchaseOrders()->sync($poIds);
-        }
-
-        foreach ($validated['items'] as $item) {
-            $itemPoId = array_key_exists('purchase_order_id', $item)
-                ? (! empty($item['purchase_order_id']) ? (int) $item['purchase_order_id'] : null)
-                : $primaryPoId;
-
-            DeliveryOrderItem::create([
-                'delivery_order_id' => $do->id,
-                'purchase_order_id' => $itemPoId,
-                'material_id' => $item['material_id'],
-                'qty_received' => $item['qty_received'],
-                'unit_id' => $item['unit_id'],
+        $do = DB::transaction(function () use ($validated, $filePath, $poIds, $primaryPoId) {
+            $do = DeliveryOrder::create([
+                'project_id' => $validated['project_id'],
+                'purchase_order_id' => $primaryPoId,
+                'supplier_id' => $validated['supplier_id'],
+                'do_number' => trim($validated['do_number']),
+                'do_date' => $validated['do_date'],
+                'attachment_path' => $filePath,
+                'received_by' => Auth::id(),
+                'status' => 'validated',
+                'notes' => $validated['notes'] ?? null,
             ]);
-        }
 
-        // Recalculate material realization & variance
-        $do->syncRealizations();
+            if (! empty($poIds)) {
+                $do->purchaseOrders()->sync($poIds);
+            }
+
+            foreach ($validated['items'] as $item) {
+                $itemPoId = array_key_exists('purchase_order_id', $item)
+                    ? (! empty($item['purchase_order_id']) ? (int) $item['purchase_order_id'] : null)
+                    : $primaryPoId;
+
+                DeliveryOrderItem::create([
+                    'delivery_order_id' => $do->id,
+                    'purchase_order_id' => $itemPoId,
+                    'material_id' => $item['material_id'],
+                    'qty_received' => $item['qty_received'],
+                    'unit_id' => $item['unit_id'],
+                ]);
+            }
+
+            // Recalculate material realization & variance (sekali per material unik)
+            $do->load('items');
+            foreach ($do->items->pluck('material_id')->unique() as $materialId) {
+                MaterialRealization::recalculateForProjectMaterial($do->project_id, $materialId);
+            }
+
+            return $do;
+        });
 
         return redirect()->route('procurement.do.index', ['project_id' => $do->project_id])
             ->with('success', "Penerimaan Pembelian (DO) {$do->do_number} dan bukti fisik berhasil dicatat!");
@@ -474,11 +497,11 @@ class ProcurementController extends Controller
             ->orderByDesc('invoice_date')
             ->get();
 
-        $purchaseOrders = PurchaseOrder::where('project_id', $project->id)->orderByDesc('po_date')->get();
+        $purchaseOrders = PurchaseOrder::with('supplier')->where('project_id', $project->id)->orderByDesc('po_date')->get();
 
         // Badge counters
         $poCount = Auth::user()->canReadPo()
-            ? PurchaseOrder::where('project_id', $project->id)->count()
+            ? $purchaseOrders->count()
             : 0;
         $doCount = Auth::user()->canReadDo()
             ? DeliveryOrder::where('project_id', $project->id)->count()
@@ -574,7 +597,7 @@ class ProcurementController extends Controller
 
         $query = PurchaseOrder::where('project_id', $project->id)
             ->where('status', '!=', 'cancelled')
-            ->with(['supplier', 'creator', 'items.material.defaultUnit', 'deliveryOrders', 'directDeliveryOrders'])
+            ->with(['supplier', 'creator', 'items.material.defaultUnit', 'items.unit', 'deliveryOrders', 'directDeliveryOrders'])
             ->orderByDesc('po_date');
 
         if ($supplierFilter) {
@@ -590,14 +613,8 @@ class ProcurementController extends Controller
             });
         }
 
-        $allPos = $query->get();
-
-        // Enrich with fulfillment details
-        $enrichedPos = $allPos->map(function ($po) {
-            $po->fulfillment = $po->getFulfillmentDetails();
-
-            return $po;
-        });
+        // Enrich with fulfillment details (batch: 2 query untuk seluruh PO)
+        $enrichedPos = PurchaseOrder::attachFulfillment($query->get());
 
         // Filter only outstanding POs (has pending items)
         $outstandingPos = $enrichedPos->filter(function ($po) use ($statusFilter) {

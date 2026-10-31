@@ -12,10 +12,13 @@ class CheckModulePermission
     /**
      * Handle an incoming request.
      *
+     * Mendukung beberapa modul sekaligus (cukup salah satu), mis. "module:materials,rab".
+     *
      * @param  Closure(Request): (Response)  $next
      */
-    public function handle(Request $request, Closure $next, string $module): Response
+    public function handle(Request $request, Closure $next, string ...$modules): Response
     {
+        $module = implode(', ', $modules);
         $user = Auth::user();
 
         if (! $user) {
@@ -28,7 +31,7 @@ class CheckModulePermission
             return redirect()->route('login')->withErrors(['login' => 'Akun Anda dinonaktifkan oleh administrator.']);
         }
 
-        if (! $user->hasModulePermission($module)) {
+        if (! $user->hasAnyModulePermission($modules)) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,

@@ -70,6 +70,12 @@
                     ? $currentProject
                     : (\App\Models\Project::find(session('active_project_id')) ?? \App\Models\Project::first()));
             $allProjects = \App\Models\Project::orderBy('name')->get();
+
+            // Dihitung sekali di awal: dipakai menu sidebar & lonceng header (harus selalu terdefinisi)
+            $canSeeAlerts = (bool) auth()->user()?->hasModulePermission('alerts');
+            $unreadAlerts = ($canSeeAlerts && $activeProject)
+                ? \App\Models\Alert::where('project_id', $activeProject->id)->where('status', 'unread')->count()
+                : 0;
         @endphp
         <div class="p-4 border-b border-slate-100 bg-slate-50/70">
             <div class="flex items-center justify-between mb-1.5">
@@ -153,7 +159,7 @@
                                 </div>
                                 @php
                                     $sidebarActiveProjId = session('active_project_id');
-                                    $sidebarPendingCount = $sidebarActiveProjId ? \App\Models\PurchaseOrder::where('project_id', $sidebarActiveProjId)->where('status', '!=', 'cancelled')->get()->filter(fn($p) => $p->getFulfillmentDetails()['has_pending'])->count() : 0;
+                                    $sidebarPendingCount = $pendingPoCount ?? \App\Models\PurchaseOrder::pendingCountForProject($sidebarActiveProjId);
                                 @endphp
                                 @if($sidebarPendingCount > 0)
                                     <span class="px-2 py-0.5 text-[10px] font-black rounded-full bg-amber-100 text-amber-800 border border-amber-300">
@@ -259,7 +265,11 @@
                                     <span>Validasi Ganda (DO+Inv)</span>
                                 </div>
                                 @php
-                                    $pendingValCount = \App\Models\MaterialVarianceValidation::where('status', '!=', 'fully_validated')->count();
+                                    $pendingValCount = $activeProject
+                                        ? \App\Models\MaterialVarianceValidation::where('status', '!=', 'fully_validated')
+                                            ->whereHas('realization', fn ($q) => $q->where('project_id', $activeProject->id))
+                                            ->count()
+                                        : 0;
                                 @endphp
                                 @if($pendingValCount > 0)
                                     <span class="px-2 py-0.5 text-[11px] font-bold bg-amber-100 text-amber-800 rounded-full">{{ $pendingValCount }}</span>
@@ -336,8 +346,8 @@
                             </a>
                         @endif
 
-                        @if(auth()->user()?->hasModulePermission('alerts'))
-                            <a href="{{ route('alerts.index') }}" 
+                        @if($canSeeAlerts)
+                            <a href="{{ route('alerts.index') }}"
                                class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('alerts.*') ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                                 <div class="flex items-center gap-3">
                                     <svg class="w-5 h-5 {{ request()->routeIs('alerts.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,9 +355,6 @@
                                     </svg>
                                     <span>Pusat Peringatan</span>
                                 </div>
-                                @php
-                                    $unreadAlerts = \App\Models\Alert::where('status', 'unread')->count();
-                                @endphp
                                 @if($unreadAlerts > 0)
                                     <span class="px-2 py-0.5 text-[11px] font-bold bg-rose-100 text-rose-700 rounded-full">{{ $unreadAlerts }}</span>
                                 @endif
@@ -445,6 +452,7 @@
                 </a>
 
                 <!-- Notification Bell -->
+                @if($canSeeAlerts)
                 <a href="{{ route('alerts.index') }}" class="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -453,6 +461,7 @@
                         <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></span>
                     @endif
                 </a>
+                @endif
 
                 <!-- User Avatar / Role Pill & Logout -->
                 <div class="pl-2 border-l border-slate-200 flex items-center gap-2">

@@ -34,8 +34,8 @@ class VarianceValidationController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $availableDos = DeliveryOrder::where('project_id', $project->id)->orderByDesc('do_date')->get();
-        $availableInvoices = Invoice::where('project_id', $project->id)->orderByDesc('invoice_date')->get();
+        $availableDos = DeliveryOrder::with('supplier')->where('project_id', $project->id)->orderByDesc('do_date')->get();
+        $availableInvoices = Invoice::with('supplier')->where('project_id', $project->id)->orderByDesc('invoice_date')->get();
 
         return view('variance.index', compact(
             'project',
@@ -68,10 +68,16 @@ class VarianceValidationController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // DO yang dipakai validasi harus milik proyek yang sama dengan realisasi material
+        $projectId = $validation->realization?->project_id;
+        if (! DeliveryOrder::whereKey($request->delivery_order_id)->where('project_id', $projectId)->exists()) {
+            return redirect()->back()->with('error', 'Surat Jalan (DO) yang dipilih bukan milik proyek realisasi material ini.');
+        }
+
         $validation->validateByPengawas(
-            Auth::id(),
+            (int) Auth::id(),
             $request->notes,
-            $request->delivery_order_id
+            (int) $request->delivery_order_id
         );
 
         return redirect()->back()->with('success', 'Validasi Pengawas Lapangan (DO fisik) berhasil disimpan!');
@@ -84,10 +90,16 @@ class VarianceValidationController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Faktur yang dipakai validasi harus milik proyek yang sama dengan realisasi material
+        $projectId = $validation->realization?->project_id;
+        if (! Invoice::whereKey($request->invoice_id)->where('project_id', $projectId)->exists()) {
+            return redirect()->back()->with('error', 'Faktur (Invoice) yang dipilih bukan milik proyek realisasi material ini.');
+        }
+
         $validation->validateByPurchasing(
-            Auth::id(),
+            (int) Auth::id(),
             $request->notes,
-            $request->invoice_id
+            (int) $request->invoice_id
         );
 
         return redirect()->back()->with('success', 'Validasi Purchasing (Faktur & Invoice) berhasil disimpan!');

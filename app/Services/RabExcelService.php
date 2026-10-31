@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\CostRealization;
 use App\Models\Material;
+use App\Models\MaterialRealization;
 use App\Models\Project;
 use App\Models\RabItem;
 use App\Models\RabItemMaterial;
 use App\Models\RabNode;
 use App\Models\Unit;
+use App\Services\Rab\UnitNormalizer;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -160,6 +165,7 @@ class RabExcelService
     public function validateAndPreview(UploadedFile $file): array
     {
         $reader = new Xlsx;
+        $reader->setReadDataOnly(true);
         $spreadsheet = $reader->load($file->getRealPath());
 
         $result = [
@@ -199,7 +205,7 @@ class RabExcelService
             $sheetDetail = $spreadsheet->getSheet(0);
         }
 
-        $unitsMap = Unit::all()->pluck('id', 'code')->toArray();
+        $unitLookup = $this->buildUnitLookup(Unit::all());
         $highestRow = $sheetDetail->getHighestRow();
 
         $activeNode1 = null;
@@ -208,17 +214,23 @@ class RabExcelService
         $activeItem = null;
 
         for ($r = 2; $r <= $highestRow; $r++) {
-            $level = (int) $sheetDetail->getCell("A{$r}")->getValue();
-            $code = trim((string) $sheetDetail->getCell("B{$r}")->getValue());
-            $name = trim((string) $sheetDetail->getCell("C{$r}")->getValue());
-            $volume = $sheetDetail->getCell("D{$r}")->getValue();
-            $unitCode = trim((string) $sheetDetail->getCell("E{$r}")->getValue());
-            $unitPrice = $sheetDetail->getCell("F{$r}")->getValue();
-            $totalPrice = $sheetDetail->getCell("G{$r}")->getValue();
+            $level = (int) $this->cellValue($sheetDetail->getCell("A{$r}"));
+            $name = trim((string) $this->cellValue($sheetDetail->getCell("C{$r}")));
 
-            // Skip empty rows
-            if (empty($level) && empty($name)) {
+            // Skip empty rows (template v2 berisi formula kolom G hingga baris 1501)
+            if (empty($level) && $name === '') {
                 continue;
+            }
+
+            $code = trim((string) $this->cellValue($sheetDetail->getCell("B{$r}")));
+            $volume = $this->numericCell($sheetDetail->getCell("D{$r}"));
+            $unitCode = trim((string) $this->cellValue($sheetDetail->getCell("E{$r}")));
+            $unitPrice = $this->numericCell($sheetDetail->getCell("F{$r}"));
+            $totalPrice = $this->numericCell($sheetDetail->getCell("G{$r}"));
+
+            // Kolom "Jumlah Harga" boleh kosong/formula: hitung dari volume x harga satuan
+            if (($totalPrice === null || $totalPrice == 0) && $volume !== null && $unitPrice !== null) {
+                $totalPrice = round($volume * $unitPrice, 2);
             }
 
             $result['stats']['total_rows']++;
@@ -229,7 +241,7 @@ class RabExcelService
                 $rowErrors[] = "Baris {$r}: Level harus antara 1 sampai 5 (ditemukan '{$level}')";
             }
 
-            if (empty($name)) {
+            if ($name === '') {
                 $rowErrors[] = "Baris {$r}: Uraian pekerjaan/material tidak boleh kosong";
             }
 
@@ -258,18 +270,9 @@ class RabExcelService
             } elseif ($level == 4) {
                 $result['stats']['level_4_count']++;
                 $activeItem = $name;
-                $numericVol = (float) str_replace(',', '', (string) $volume);
-                $numericPrice = (float) str_replace(',', '', (string) $unitPrice);
-                $calcTotal = $numericVol * $numericPrice;
-                $numericTotal = (float) str_replace(',', '', (string) $totalPrice);
+                $result['stats']['total_rab_amount'] += (float) $totalPrice;
 
-                if ($numericTotal > 0) {
-                    $result['stats']['total_rab_amount'] += $numericTotal;
-                } else {
-                    $result['stats']['total_rab_amount'] += $calcTotal;
-                }
-
-                if (! empty($unitCode) && ! isset($unitsMap[$unitCode])) {
+                if ($unitCode !== '' && $this->findUnitId($unitLookup, $unitCode) === null) {
                     $result['warnings'][] = "Baris {$r}: Satuan '{$unitCode}' belum terdaftar di master units (akan otomatis dibuat)";
                 }
             } elseif ($level == 5) {
@@ -289,10 +292,10 @@ class RabExcelService
                 'level' => $level,
                 'code' => $code,
                 'name' => $name,
-                'volume' => $volume !== null && $volume !== '' ? (float) str_replace(',', '', (string) $volume) : null,
+                'volume' => $volume,
                 'unit' => $unitCode,
-                'unit_price' => $unitPrice !== null && $unitPrice !== '' ? (float) str_replace(',', '', (string) $unitPrice) : null,
-                'total_price' => $totalPrice !== null && $totalPrice !== '' ? (float) str_replace(',', '', (string) $totalPrice) : null,
+                'unit_price' => $unitPrice,
+                'total_price' => $totalPrice,
                 'errors' => $rowErrors,
             ];
         }
@@ -306,7 +309,8 @@ class RabExcelService
     public function import(array $previewData, ?int $targetProjectId = null, ?int $userId = null): Project
     {
         return DB::transaction(function () use ($previewData, $targetProjectId, $userId) {
-            $unitsMap = Unit::all()->keyBy('code');
+            $unitLookup = $this->buildUnitLookup(Unit::all());
+            $materialCache = [];
 
             // 1. Resolve or Create Project
             if ($targetProjectId) {
@@ -337,22 +341,15 @@ class RabExcelService
                 $level = $row['level'];
                 $code = $row['code'];
                 $name = $row['name'];
-                $volume = $row['volume'] ?? 0;
-                $unitCode = $row['unit'] ?? 'Ls';
-                $unitPrice = $row['unit_price'] ?? 0;
-                $totalPrice = $row['total_price'] ?? ($volume * $unitPrice);
-
-                // Auto register unit if missing
-                if (! empty($unitCode) && ! isset($unitsMap[$unitCode])) {
-                    $newUnit = Unit::create([
-                        'code' => $unitCode,
-                        'name' => $unitCode,
-                        'group' => 'satuan_hitung',
-                        'is_base_unit' => false,
-                    ]);
-                    $unitsMap[$unitCode] = $newUnit;
+                $volume = (float) ($row['volume'] ?? 0);
+                $unitPrice = (float) ($row['unit_price'] ?? 0);
+                $totalPrice = (float) ($row['total_price'] ?? 0);
+                if ($totalPrice == 0 && $volume != 0 && $unitPrice != 0) {
+                    $totalPrice = round($volume * $unitPrice, 2);
                 }
-                $unitId = $unitsMap[$unitCode]->id ?? 1;
+
+                // Satuan hanya relevan untuk item (level 4) & material (level 5)
+                $unitId = $level >= 4 ? $this->resolveUnitId($unitLookup, (string) ($row['unit'] ?? '')) : null;
 
                 if ($level == 1) {
                     $currentL1 = RabNode::create([
@@ -403,7 +400,9 @@ class RabExcelService
                         $currentL1 = $targetNode;
                     }
 
-                    $currentL4 = RabItem::create([
+                    // Tanpa event model: subtotal, cost realization, dan baseline material
+                    // dihitung sekali secara massal setelah seluruh baris tersimpan.
+                    $currentL4 = RabItem::createQuietly([
                         'rab_node_id' => $targetNode->id,
                         'item_no' => $code ?: ($sortOrder.'.0'),
                         'name' => $name,
@@ -415,11 +414,11 @@ class RabExcelService
                         'sort_order' => $sortOrder++,
                     ]);
                 } elseif ($level == 5 && $currentL4) {
-                    // Find or create material in master
-                    $material = Material::firstOrCreate(
+                    // Find or create material in master (cache per nama agar tidak query berulang)
+                    $material = $materialCache[$name] ??= Material::firstOrCreate(
                         ['name' => $name],
                         [
-                            'code' => 'MAT-IMP-'.strtoupper(substr(md5($name), 0, 6)),
+                            'code' => $this->generateImportedMaterialCode($name),
                             'category' => 'bahan_dasar',
                             'default_unit_id' => $unitId,
                             'standard_price' => $unitPrice,
@@ -427,7 +426,7 @@ class RabExcelService
                         ]
                     );
 
-                    RabItemMaterial::create([
+                    RabItemMaterial::createQuietly([
                         'rab_item_id' => $currentL4->id,
                         'material_id' => $material->id,
                         'volume' => $volume,
@@ -437,19 +436,142 @@ class RabExcelService
                         'input_by' => $userId,
                     ]);
 
-                    $currentL4->is_composite = true;
-                    $currentL4->saveQuietly();
+                    if (! $currentL4->is_composite) {
+                        $currentL4->is_composite = true;
+                        $currentL4->saveQuietly();
+                    }
                 }
             }
 
             // Recalculate all subtotals
             $project->recalculateAllSubtotals();
 
+            // Sinkronkan anggaran cost realization untuk seluruh item RAB proyek
+            CostRealization::syncBudgetsForProject($project->id);
+
             // Recalculate material baselines
             MaterialRealization::recalculateAllForProject($project->id);
 
             return $project;
         });
+    }
+
+    /**
+     * Ambil nilai sel; sel formula dievaluasi, error formula dianggap kosong.
+     */
+    private function cellValue(Cell $cell): mixed
+    {
+        $value = $cell->getValue();
+
+        if (is_string($value) && str_starts_with($value, '=')) {
+            try {
+                $value = $cell->getCalculatedValue();
+            } catch (\Throwable) {
+                $value = $cell->getOldCalculatedValue();
+            }
+
+            if (is_string($value) && str_starts_with($value, '#')) {
+                return null;
+            }
+        }
+
+        return $value;
+    }
+
+    /**
+     * Ambil nilai numerik sel (mendukung formula & teks berformat ribuan "1,250,000").
+     */
+    private function numericCell(Cell $cell): ?float
+    {
+        $value = $this->cellValue($cell);
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        $clean = str_replace([',', ' '], '', trim((string) $value));
+
+        return is_numeric($clean) ? (float) $clean : null;
+    }
+
+    /**
+     * Index master satuan berdasarkan kode & nama (case-insensitive) agar "LS"/"Ls" atau
+     * "Buah"/"Bh" tidak menghasilkan satuan ganda.
+     *
+     * @return array<string, Unit>
+     */
+    private function buildUnitLookup(Collection $units): array
+    {
+        $lookup = [];
+        foreach ($units as $unit) {
+            $lookup[mb_strtolower(trim($unit->code))] ??= $unit;
+        }
+        foreach ($units as $unit) {
+            $lookup[mb_strtolower(trim($unit->name))] ??= $unit;
+        }
+
+        return $lookup;
+    }
+
+    /**
+     * @param  array<string, Unit>  $lookup
+     */
+    private function findUnitId(array $lookup, string $raw): ?int
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return null;
+        }
+
+        $canonical = UnitNormalizer::normalize($raw)['canonical'] ?? $raw;
+
+        return ($lookup[mb_strtolower($raw)] ?? $lookup[mb_strtolower($canonical)] ?? null)?->id;
+    }
+
+    /**
+     * Cari satuan di master, atau daftarkan otomatis bila belum ada (default "Ls").
+     *
+     * @param  array<string, Unit>  $lookup
+     */
+    private function resolveUnitId(array &$lookup, string $raw): int
+    {
+        $raw = trim($raw) !== '' ? trim($raw) : 'Ls';
+
+        $unitId = $this->findUnitId($lookup, $raw);
+        if ($unitId !== null) {
+            return $unitId;
+        }
+
+        $canonical = UnitNormalizer::normalize($raw)['canonical'] ?? $raw;
+        $unit = Unit::create([
+            'code' => $canonical,
+            'name' => $canonical,
+            'group' => 'satuan_hitung',
+            'is_base_unit' => false,
+        ]);
+
+        $lookup[mb_strtolower($raw)] = $unit;
+        $lookup[mb_strtolower($canonical)] = $unit;
+
+        return $unit->id;
+    }
+
+    private function generateImportedMaterialCode(string $name): string
+    {
+        $base = 'MAT-IMP-'.strtoupper(substr(md5($name), 0, 6));
+        $code = $base;
+        $suffix = 1;
+
+        // Kode unik: hindari bentrok hash dengan material lain yang sudah ada
+        while (Material::where('code', $code)->exists()) {
+            $code = $base.'-'.$suffix++;
+        }
+
+        return $code;
     }
 
     /**
@@ -510,7 +632,9 @@ class RabExcelService
         }
 
         $rowIdx = 2;
-        $roots = $project->rootRabNodes;
+        $roots = $project->rootRabNodes()
+            ->with(RabNode::treeRelations(['unit', 'materials.material', 'materials.unit']))
+            ->get();
 
         foreach ($roots as $node1) {
             // Level 1

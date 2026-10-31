@@ -204,7 +204,9 @@ class UserController extends Controller
         }
 
         if ($user->isSuperAdmin()) {
-            $superAdminCount = User::where('role', 'Super Admin')->count();
+            // Role super admin bisa ditulis bervariasi ("Super Admin", "superadmin", role Spatie), jadi
+            // hitung memakai isSuperAdmin() yang sama dengan pengecekan hak akses.
+            $superAdminCount = User::with('roles')->get()->filter(fn (User $u) => $u->isSuperAdmin())->count();
             if ($superAdminCount <= 1) {
                 return back()->withErrors(['error' => 'Tidak dapat menghapus Super Administrator terakhir di sistem.']);
             }
