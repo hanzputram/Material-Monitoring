@@ -79,6 +79,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/template/download', [RabImportExportController::class, 'downloadTemplate'])->name('template.download');
         Route::get('/import', [RabImportExportController::class, 'showImportForm'])->name('import.form');
         Route::post('/import/preview', [RabImportExportController::class, 'previewImport'])->name('import.preview');
+        Route::get('/import/preview', [RabImportExportController::class, 'showPreview'])->name('import.preview.show');
         Route::post('/import/commit', [RabImportExportController::class, 'commitImport'])->name('import.commit');
         Route::get('/export/{project}', [RabImportExportController::class, 'export'])->name('export');
     });

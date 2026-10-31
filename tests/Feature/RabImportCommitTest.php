@@ -49,10 +49,20 @@ class RabImportCommitTest extends TestCase
 
         $file = new UploadedFile($path, 'rab.xlsx', null, null, true);
         $this->post(route('rab.import.preview'), ['file' => $file, 'target_project_id' => $project->id])
-            ->assertOk();
+            ->assertRedirect(route('rab.import.preview.show'));
+
+        // Pratinjau dibuka via GET (refresh / Back / ganti proyek tidak lagi 405)
+        $this->get(route('rab.import.preview.show'))
+            ->assertOk()
+            ->assertSee('Mobilisasi')
+            ->assertSee('Proyek Import Uji');
 
         $this->post(route('rab.import.commit'))
             ->assertRedirect(route('rab.builder', ['project_id' => $project->id]));
+
+        // Setelah commit, membuka ulang URL pratinjau diarahkan ke form, bukan error
+        $this->get(route('rab.import.preview.show'))
+            ->assertRedirect(route('rab.import.form'));
 
         // Tidak ada satuan baru: LS -> Ls, Buah -> Bh, zak -> Zak
         $this->assertSame($unitCountBefore, Unit::count());
@@ -84,6 +94,31 @@ class RabImportCommitTest extends TestCase
             ->where('material_id', $semen->id)
             ->firstOrFail();
         $this->assertEquals(4.5, (float) $realization->planned_qty);
+    }
+
+    public function test_switching_project_from_preview_page_does_not_hit_post_only_route(): void
+    {
+        $project = Project::create(['name' => 'Proyek Switch Pratinjau', 'status' => 'active']);
+        $path = $this->makeWorkbook([[4, '1.0', 'Item Uji Switch', 1, 'Ls', 1000]]);
+
+        $this->post(route('rab.import.preview'), ['file' => new UploadedFile($path, 'rab.xlsx', null, null, true)]);
+
+        $this->from(route('rab.import.preview.show'))
+            ->post(route('projects.switch'), ['project_id' => $project->id])
+            ->assertRedirect(route('rab.import.preview.show'));
+
+        $this->get(route('rab.import.preview.show'))->assertOk()->assertSee('Item Uji Switch');
+    }
+
+    public function test_unreadable_file_redirects_back_to_form_with_error(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'bad').'.xlsx';
+        file_put_contents($path, 'bukan file excel');
+
+        $this->post(route('rab.import.preview'), ['file' => new UploadedFile($path, 'rab.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true)])
+            ->assertRedirect();
+
+        $this->assertNull(session('rab_import_preview'));
     }
 
     /**

@@ -56,14 +56,35 @@ class RabImportExportController extends Controller
             'target_project_id' => 'nullable|exists:projects,id',
         ]);
 
-        $file = $request->file('file');
-        $preview = $this->excelService->validateAndPreview($file);
+        try {
+            $preview = $this->excelService->validateAndPreview($request->file('file'));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('rab.import.form')
+                ->with('error', 'File Excel tidak dapat dibaca. Pastikan berkas .xlsx tidak rusak dan memakai Template RAB v2.');
+        }
 
         // Store preview in session for commit step
         session(['rab_import_preview' => $preview]);
         session(['rab_import_target_project_id' => $request->target_project_id]);
 
-        $targetProject = $request->target_project_id ? Project::find($request->target_project_id) : null;
+        // Post/Redirect/Get: halaman pratinjau dibuka via GET agar refresh, tombol Back,
+        // atau ganti proyek/peran (redirect ke URL sebelumnya) tidak memicu 405
+        return redirect()->route('rab.import.preview.show');
+    }
+
+    public function showPreview()
+    {
+        $preview = session('rab_import_preview');
+
+        if (! $preview) {
+            return redirect()->route('rab.import.form')
+                ->with('info', 'Belum ada berkas yang dipratinjau atau sesi import telah selesai. Silakan unggah file Excel RAB.');
+        }
+
+        $targetProjectId = session('rab_import_target_project_id');
+        $targetProject = $targetProjectId ? Project::find($targetProjectId) : null;
 
         return view('rab.import-preview', compact('preview', 'targetProject'));
     }
