@@ -13,11 +13,12 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\RabItemMaterial;
 use App\Models\RabNode;
+use App\Services\RabMonitoringService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, RabMonitoringService $monitoring)
     {
         // 1. Resolve Active Project
         $projects = Project::orderBy('name')->get();
@@ -42,6 +43,7 @@ class DashboardController extends Controller
         $currentProject->load([
             'rootRabNodes' => fn ($q) => $q->with(RabNode::treeRelations([
                 'materials.breakdowns',
+                'unit',
                 'costRealization',
                 'purchaseOrderItems.purchaseOrder',
             ])),
@@ -67,16 +69,15 @@ class DashboardController extends Controller
             })->where('status', '!=', 'fully_validated')->count(),
         ];
 
-        // 3. Category Cost Breakdown for Chart
-        $chartCategories = [];
-        $chartBudgets = [];
-        $chartActuals = [];
+        // 3. Cost Breakdown for Chart (menyesuaikan kedalaman RAB: kategori / sub kategori / item)
+        $chart = $monitoring->chartSeries($currentProject->rootRabNodes);
+        $chartLabel = $chart['label'];
+        $chartCategories = $chart['categories'];
+        $chartBudgets = $chart['budgets'];
+        $chartActuals = $chart['actuals'];
 
-        foreach ($currentProject->rootRabNodes as $node) {
-            $chartCategories[] = $node->code.' '.(strlen($node->name) > 20 ? substr($node->name, 0, 18).'...' : $node->name);
-            $chartBudgets[] = (float) $node->subtotal_cache;
-            $chartActuals[] = round((float) $node->actual_cost_total, 2);
-        }
+        // 3.b Monitoring item pekerjaan (level 4) yang tidak memiliki rincian BOM level 5
+        $itemMonitoring = $monitoring->itemMonitoring($currentProject->rootRabNodes);
 
         // 4. Recent Alerts
         $recentAlerts = Alert::where('project_id', $currentProject->id)
@@ -246,6 +247,8 @@ class DashboardController extends Controller
             $q->where('project_id', $currentProject->id);
         })
             ->whereNotIn('material_id', $allMappedMaterialIds)
+            // PO yang dialokasikan ke item RAB (RAB tanpa BOM level 5) termasuk anggaran RAB
+            ->whereNull('rab_item_id')
             ->whereDoesntHave('material', fn ($q) => $q->where('category', 'operasional_kendaraan'))
             ->with(['material.defaultUnit', 'purchaseOrder.supplier', 'unit'])
             ->get();
@@ -254,6 +257,12 @@ class DashboardController extends Controller
             $q->where('project_id', $currentProject->id);
         })
             ->whereNotIn('material_id', $allMappedMaterialIds)
+            // Penerimaan atas PO yang dialokasikan ke item RAB juga bukan pembelian di luar RAB
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')
+                ->from('purchase_order_items as allocated_poi')
+                ->whereColumn('allocated_poi.purchase_order_id', 'delivery_order_items.purchase_order_id')
+                ->whereColumn('allocated_poi.material_id', 'delivery_order_items.material_id')
+                ->whereNotNull('allocated_poi.rab_item_id'))
             ->whereDoesntHave('material', fn ($q) => $q->where('category', 'operasional_kendaraan'))
             ->with(['material.defaultUnit', 'deliveryOrder.supplier', 'deliveryOrder.receiver', 'unit'])
             ->get();
@@ -417,6 +426,8 @@ class DashboardController extends Controller
             'treeRealizations',
             'nonRabPurchases',
             'vehicleOpsMaterials',
+            'itemMonitoring',
+            'chartLabel',
             'chartCategories',
             'chartBudgets',
             'chartActuals',

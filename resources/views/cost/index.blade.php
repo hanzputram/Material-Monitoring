@@ -43,7 +43,7 @@
     <div class="card-clean p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
             <div>
-                <h3 class="text-base font-bold text-slate-900">Perbandingan Anggaran vs Realisasi per Kategori Pekerjaan</h3>
+                <h3 class="text-base font-bold text-slate-900">Perbandingan Anggaran vs Realisasi per {{ $chartLabel }}</h3>
                 <p class="text-xs text-slate-500">Evaluasi efisiensi pengeluaran pada setiap rumpun pekerjaan</p>
             </div>
             <button onclick="window.print()" class="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center gap-1.5">
@@ -184,12 +184,17 @@
             dataLabels: { enabled: false },
             xaxis: {
                 categories: categories,
-                labels: { style: { fontSize: '11px', fontWeight: 600 } }
+                labels: { style: { fontSize: '11px', fontWeight: 600 }, rotate: -35, hideOverlappingLabels: false, trim: true }
             },
             yaxis: {
                 labels: {
                     formatter: function (val) {
-                        return 'Rp ' + (val / 1000000).toFixed(0) + ' Jt';
+                        // Satuan sumbu menyesuaikan besar anggaran (Miliar / Juta / Ribu)
+                        const abs = Math.abs(val);
+                        if (abs >= 1e9) return 'Rp ' + (val / 1e9).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+                        if (abs >= 1e6) return 'Rp ' + (val / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' Jt';
+                        if (abs >= 1e3) return 'Rp ' + (val / 1e3).toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' Rb';
+                        return 'Rp ' + val.toLocaleString('id-ID', { maximumFractionDigits: 0 });
                     }
                 }
             },

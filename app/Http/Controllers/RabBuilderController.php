@@ -72,13 +72,14 @@ class RabBuilderController extends Controller
         $validated['parent_id'] = $validated['parent_id'] ?? null;
         $validated['level'] = (int) $validated['level'];
 
-        // Parent wajib berada di proyek yang sama dan tepat satu level di atasnya
-        if ($validated['level'] > 1) {
-            $parent = $validated['parent_id'] ? RabNode::find($validated['parent_id']) : null;
-            if (! $parent || $parent->project_id !== $project->id || $parent->level !== $validated['level'] - 1) {
+        // Parent (bila ada) wajib berada di proyek yang sama dan levelnya lebih tinggi (angka lebih kecil).
+        // Kategori level 2/3 tanpa induk diizinkan sebagai kategori utama (RAB dengan sebagian level).
+        if ($validated['level'] > 1 && $validated['parent_id']) {
+            $parent = RabNode::find($validated['parent_id']);
+            if (! $parent || $parent->project_id !== $project->id || $parent->level >= $validated['level']) {
                 return back()->withInput()->with('error', 'Induk kategori tidak valid untuk level yang dipilih.');
             }
-        } else {
+        } elseif ($validated['level'] === 1) {
             $validated['parent_id'] = null;
         }
 

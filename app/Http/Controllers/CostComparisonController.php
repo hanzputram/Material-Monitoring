@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\CostRealization;
 use App\Models\Project;
 use App\Models\RabNode;
+use App\Services\RabMonitoringService;
 use Illuminate\Http\Request;
 
 class CostComparisonController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, RabMonitoringService $monitoring)
     {
         $projects = Project::orderBy('name')->get();
         if ($projects->isEmpty()) {
@@ -42,16 +43,12 @@ class CostComparisonController extends Controller
         $varianceTotal = $totalActual - $totalBudget;
         $variancePct = $totalBudget > 0 ? round(($varianceTotal / $totalBudget) * 100, 2) : 0;
 
-        // 4. Chart data by Root Category
-        $chartCategories = [];
-        $chartBudgets = [];
-        $chartActuals = [];
-
-        foreach ($rootNodes as $node) {
-            $chartCategories[] = $node->code.' '.(strlen($node->name) > 20 ? substr($node->name, 0, 18).'...' : $node->name);
-            $chartBudgets[] = (float) $node->subtotal_cache;
-            $chartActuals[] = round((float) $node->actual_cost_total, 2);
-        }
+        // 4. Chart data (menyesuaikan kedalaman RAB: kategori / sub kategori / item pekerjaan)
+        $chart = $monitoring->chartSeries($rootNodes);
+        $chartLabel = $chart['label'];
+        $chartCategories = $chart['categories'];
+        $chartBudgets = $chart['budgets'];
+        $chartActuals = $chart['actuals'];
 
         return view('cost.index', compact(
             'project',
@@ -62,6 +59,7 @@ class CostComparisonController extends Controller
             'totalActual',
             'varianceTotal',
             'variancePct',
+            'chartLabel',
             'chartCategories',
             'chartBudgets',
             'chartActuals'

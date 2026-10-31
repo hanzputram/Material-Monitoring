@@ -82,12 +82,14 @@
                             <span class="text-xs sm:text-sm font-extrabold font-mono text-slate-900">Rp {{ number_format($l1->subtotal_cache, 2, ',', '.') }}</span>
                         </div>
                         <div class="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-                            <!-- Add Sub Kategori -->
-                            <button type="button" @click="nodeModal = { parent_id: {{ $l1->id }}, level: 2, levelName: 'Sub Kategori (Level 2) di bawah {{ $l1->code }}' }; showNodeModal = true" 
+                            <!-- Add Sub Kategori (kategori utama bisa level 1/2/3 bila RAB hanya sebagian level) -->
+                            @if($l1->level < 3)
+                            <button type="button" @click="nodeModal = { parent_id: {{ $l1->id }}, level: {{ $l1->level + 1 }}, levelName: '{{ $l1->level == 1 ? 'Sub Kategori (Level 2)' : 'Sub-Sub Kategori (Level 3)' }} di bawah {{ $l1->code }}' }; showNodeModal = true"
                                     class="p-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100/50 rounded-lg flex items-center gap-1" title="Tambah Sub Kategori">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                 <span class="hidden sm:inline">Sub Kategori</span>
                             </button>
+                            @endif
                             <!-- Add Item Directly -->
                             <button type="button" @click="itemModal = { rab_node_id: {{ $l1->id }}, nodeName: '{{ $l1->code }} - {{ $l1->name }}' }; showItemModal = true" 
                                     class="p-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-100/50 rounded-lg flex items-center gap-1" title="Tambah Item Pekerjaan Langsung">
@@ -134,10 +136,12 @@
                                 <div class="flex items-center justify-between sm:justify-end gap-3">
                                     <span class="text-xs font-bold font-mono text-slate-800">Rp {{ number_format($l2->subtotal_cache, 2, ',', '.') }}</span>
                                     <div class="flex items-center gap-1 border-l border-slate-200 pl-2">
-                                        <button type="button" @click="nodeModal = { parent_id: {{ $l2->id }}, level: 3, levelName: 'Sub-Sub Kategori (Level 3) di bawah {{ $l2->code }}' }; showNodeModal = true" 
+                                        @if($l2->level < 3)
+                                        <button type="button" @click="nodeModal = { parent_id: {{ $l2->id }}, level: 3, levelName: 'Sub-Sub Kategori (Level 3) di bawah {{ $l2->code }}' }; showNodeModal = true"
                                                 class="px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 rounded">
                                             + Sub-Sub
                                         </button>
+                                        @endif
                                         <button type="button" @click="itemModal = { rab_node_id: {{ $l2->id }}, nodeName: '{{ $l2->code }} - {{ $l2->name }}' }; showItemModal = true" 
                                                 class="px-2 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-50 rounded">
                                             + Item

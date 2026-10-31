@@ -247,8 +247,8 @@
     <div class="card-clean p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
             <div>
-                <h3 class="text-base font-bold text-slate-900">Perbandingan Anggaran RAB vs Realisasi per Kategori</h3>
-                <p class="text-xs text-slate-500">Visualisasi alokasi biaya rencana terhadap pengeluaran aktual</p>
+                <h3 class="text-base font-bold text-slate-900">Perbandingan Anggaran RAB vs Realisasi per {{ $chartLabel }}</h3>
+                <p class="text-xs text-slate-500">Visualisasi alokasi biaya rencana terhadap pengeluaran aktual (menyesuaikan struktur level RAB proyek)</p>
             </div>
             <a href="{{ route('cost.index') }}" class="text-xs font-bold text-blue-600 hover:text-blue-800">Buka Detail Laporan &rarr;</a>
         </div>
@@ -851,7 +851,180 @@
         </div>
     </div>
 
+    <!-- 5.b MONITORING ITEM PEKERJAAN (LEVEL 4) — untuk RAB / item tanpa rincian BOM level 5 -->
+    @if($itemMonitoring->isNotEmpty())
+    @php
+        $itemCounts = [
+            'all' => $itemMonitoring->count(),
+            'over' => $itemMonitoring->where('eval_type', 'over')->count(),
+            'pending' => $itemMonitoring->where('eval_type', 'pending')->count(),
+            'partial' => $itemMonitoring->where('eval_type', 'partial')->count(),
+            'normal' => $itemMonitoring->where('eval_type', 'normal')->count(),
+        ];
+        $itemBudgetTotal = (float) $itemMonitoring->sum('budget');
+        $itemOrderedTotal = (float) $itemMonitoring->sum('ordered_cost');
+        // [label, kelas aktif, kelas idle, warna titik]
+        $itemTabs = [
+            'all' => ['Semua Item', 'bg-slate-900 text-white', 'bg-slate-100 hover:bg-slate-200 text-slate-700', null],
+            'over' => ['Melebihi RAB (Over)', 'bg-rose-600 text-white', 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200', 'bg-rose-500'],
+            'pending' => ['Belum Ada Penerimaan', 'bg-amber-600 text-white', 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200', 'bg-amber-500'],
+            'partial' => ['Sebagian Diterima', 'bg-blue-600 text-white', 'bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200', 'bg-blue-500'],
+            'normal' => ['Sesuai RAB (100%)', 'bg-emerald-600 text-white', 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200', 'bg-emerald-500'],
+        ];
+    @endphp
+    <div id="item-monitoring" class="card-clean overflow-hidden" x-data="{
+        search: '',
+        statusFilter: 'all',
+        matches(row) {
+            let s = (this.search || '').trim().toLowerCase();
+            let okSearch = s === '' || [row.name, row.itemNo, row.category, row.section].join(' ').toLowerCase().includes(s);
+            let okStatus = this.statusFilter === 'all' || row.evalType === this.statusFilter;
+            return okSearch && okStatus;
+        },
+        rows: {{ json_encode($itemMonitoring->map(fn ($i) => ['name' => $i['name'], 'itemNo' => $i['item_no'], 'category' => $i['category_code'].' '.$i['category_name'], 'section' => $i['section_title'], 'evalType' => $i['eval_type']])->values()) }},
+        get visibleCount() { return this.rows.filter(r => this.matches(r)).length; }
+    }">
+        <div class="p-4 sm:p-6 border-b border-slate-100 space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="w-2.5 h-2.5 rounded-full {{ $itemCounts['over'] > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500' }}"></span>
+                        <h3 class="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight">Monitoring Realisasi Item Pekerjaan vs RAB</h3>
+                        <span class="badge-clean bg-emerald-50 text-emerald-700 text-[11px] font-mono border border-emerald-200">Item Level 4</span>
+                    </div>
+                    <p class="text-xs text-slate-500">
+                        Item pekerjaan tanpa rincian material (BOM). Realisasi fisik dari Surat Jalan (DO) atas PO yang dialokasikan ke item RAB; realisasi biaya dari nilai PO.
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="text-right">
+                        <span class="block text-[10px] font-bold uppercase text-slate-400">Anggaran vs Nilai PO</span>
+                        <span class="text-xs font-mono font-bold text-slate-800">Rp {{ number_format($itemOrderedTotal, 0, ',', '.') }} / Rp {{ number_format($itemBudgetTotal, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="relative">
+                        <input type="text" x-model="search" placeholder="Cari item pekerjaan atau kategori..."
+                               class="w-full sm:w-64 text-xs pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-2xs font-medium">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <button type="button" x-show="search.length > 0" @click="search = ''" class="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer" title="Hapus Pencarian">&times;</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+                @foreach($itemTabs as $key => $tab)
+                    <button type="button" @click="statusFilter = '{{ $key }}'"
+                            :class="statusFilter === '{{ $key }}' ? '{{ $tab[1] }} shadow-sm font-bold' : '{{ $tab[2] }} font-semibold'"
+                            class="px-3 py-1.5 text-xs rounded-xl transition-all flex items-center gap-1.5">
+                        @if($tab[3])<span class="w-2 h-2 rounded-full {{ $tab[3] }}"></span>@endif
+                        {{ $tab[0] }}
+                        <span class="px-1.5 rounded-full text-[10px] font-bold bg-black/10">{{ $itemCounts[$key] }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="p-4 sm:p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                @foreach($itemMonitoring as $it)
+                    @php
+                        $evalType = $it['eval_type'];
+                        $row = ['name' => $it['name'], 'itemNo' => $it['item_no'], 'category' => $it['category_code'].' '.$it['category_name'], 'section' => $it['section_title'], 'evalType' => $evalType];
+                        [$cardBorder, $badgeCls, $badgeLabel] = match ($evalType) {
+                            'over' => ['border-rose-300 ring-1 ring-rose-200 bg-gradient-to-b from-rose-50/40 via-white to-white', 'bg-rose-50 text-rose-700 border-rose-200', 'Over RAB'],
+                            'pending' => ['border-slate-200 bg-white', 'bg-slate-100 text-slate-600 border-slate-200', $it['po_count'] > 0 ? 'PO, Belum DO' : 'Belum PO'],
+                            'partial' => ['border-blue-200 bg-white', 'bg-blue-50 text-blue-700 border-blue-200', $it['pct'].'%'],
+                            default => ['border-emerald-200 bg-white', 'bg-emerald-50 text-emerald-700 border-emerald-200', '100% Sesuai'],
+                        };
+                        $note = match (true) {
+                            $it['po_count'] === 0 => 'Belum ada PO yang dialokasikan ke item RAB ini.',
+                            $evalType === 'pending' => 'PO sudah terbit, belum ada Surat Jalan (DO) diterima.',
+                            $evalType === 'partial' => 'Tersisa '.format_qty(abs($it['variance_qty'])).' '.$it['unit'].' untuk memenuhi volume RAB.',
+                            $evalType === 'over' => 'Penerimaan melebihi volume RAB sebesar +'.format_qty($it['variance_qty']).' '.$it['unit'].'.',
+                            default => 'Volume RAB telah terpenuhi 100%.',
+                        };
+                    @endphp
+                    <div x-show="matches({{ json_encode($row) }})" class="h-full">
+                        <div class="h-full rounded-2xl border p-4 flex flex-col justify-between {{ $cardBorder }}">
+                            <div>
+                                <div class="flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-100 text-slate-700 rounded border border-slate-200 shrink-0">{{ $it['item_no'] ?: '#'.$it['id'] }}</span>
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase truncate" title="{{ $it['category_code'] }} {{ $it['category_name'] }}">{{ $it['category_code'] }} {{ $it['category_name'] }}</span>
+                                    </div>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap shrink-0 {{ $badgeCls }}">{{ $badgeLabel }}</span>
+                                </div>
+
+                                <div class="pt-2.5 pb-1">
+                                    <h3 class="text-base font-black text-slate-950 tracking-tight leading-snug line-clamp-2" title="{{ $it['name'] }}">{{ $it['name'] }}</h3>
+                                    @if($it['section_title'])
+                                        <p class="text-[10px] text-slate-500 truncate mt-0.5">{{ $it['section_title'] }}</p>
+                                    @endif
+                                </div>
+
+                                <div class="mt-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-1.5">
+                                    <div class="flex items-center justify-between text-[11px]">
+                                        <span class="font-bold text-slate-600">Realisasi Fisik</span>
+                                        <span class="font-black font-mono {{ $evalType === 'over' ? 'text-rose-600' : ($evalType === 'normal' ? 'text-emerald-700' : ($evalType === 'partial' ? 'text-blue-700' : 'text-slate-500')) }}">{{ $it['pct'] }}%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-200/80 rounded-full h-2.5 p-0.5 overflow-hidden flex shadow-inner">
+                                        @if($it['pct'] > 0)
+                                            <div class="h-full rounded-full {{ $evalType === 'over' ? 'bg-rose-500' : 'bg-gradient-to-r from-blue-500 to-emerald-500' }}" style="width: {{ min($it['pct'], 100) }}%;"></div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-1.5 mt-2.5 text-center">
+                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">RAB</span>
+                                        <span class="text-xs font-mono font-bold text-slate-800">{{ format_qty($it['planned_qty']) }}</span>
+                                        <span class="text-[9px] text-slate-400 block">{{ $it['unit'] }}</span>
+                                    </div>
+                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">PO</span>
+                                        <span class="text-xs font-mono font-bold {{ $it['ordered_qty'] > 0 ? 'text-slate-800' : 'text-slate-400' }}">{{ format_qty($it['ordered_qty']) }}</span>
+                                        <span class="text-[9px] text-slate-400 block">{{ $it['unit'] }}</span>
+                                    </div>
+                                    <div class="p-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                                        <span class="block text-[9px] text-slate-400 font-bold uppercase">DO</span>
+                                        <span class="text-xs font-mono font-extrabold {{ $it['received_qty'] > 0 ? 'text-blue-700' : 'text-slate-400' }}">{{ format_qty($it['received_qty']) }}</span>
+                                        <span class="text-[9px] text-slate-400 block">{{ $it['unit'] }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-2.5 p-2 rounded-lg text-[10px] leading-relaxed {{ $evalType === 'over' ? 'bg-rose-50/80 text-rose-900 border border-rose-100' : 'bg-slate-50 text-slate-600' }}">
+                                    <span class="font-bold">ℹ️ Status:</span> {{ $note }}
+                                    @if($it['unit_mismatch'])
+                                        <span class="block mt-0.5 text-amber-700">Sebagian PO memakai satuan berbeda dari RAB, hanya dihitung pada nilai biaya.</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                                <span class="text-slate-500">Nilai PO</span>
+                                <span class="font-mono font-bold {{ $it['ordered_cost'] > $it['budget'] ? 'text-rose-600' : 'text-slate-800' }}">
+                                    Rp {{ number_format($it['ordered_cost'], 0, ',', '.') }}
+                                    <span class="text-slate-400 font-medium">/ {{ number_format($it['budget'], 0, ',', '.') }}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div x-show="visibleCount === 0" class="py-12 text-center" x-cloak>
+                <p class="text-sm font-bold text-slate-800">Tidak ada item pekerjaan yang cocok</p>
+                <button type="button" @click="search = ''; statusFilter = 'all'"
+                        class="mt-3 px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer">
+                    Reset Filter & Tampilkan Semua
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- 6. EXECUTIVE MONITORING & ASSESSMENT: MATERIAL VS RAB (BASELINE) -->
+    {{-- Ditampilkan bila RAB memiliki BOM level 5 / ada penerimaan material, atau bila tidak ada data monitoring lain --}}
+    @if($realizations->isNotEmpty() || $itemMonitoring->isEmpty())
     <div class="card-clean overflow-hidden" x-data="{
         search: '',
         statusFilter: 'all',
@@ -1228,13 +1401,14 @@
                     </div>
                 @empty
                     <div class="col-span-full py-12 text-center text-slate-400">
-                        Belum ada data realisasi material di proyek ini.
+                        <p>Belum ada data realisasi material di proyek ini.</p>
+                        <p class="text-xs mt-1">Monitoring material memakai rincian BOM (Level 5) pada RAB. Tambahkan rincian material pada item pekerjaan di RAB Builder, atau catat Surat Jalan (DO).</p>
                     </div>
                 @endforelse
             </div>
 
             <!-- Empty state when search or filter yields 0 matches in Cards View -->
-            <div x-show="hasMatchingItems({{ json_encode($allCardsMats) }}) === false" class="py-16 text-center" x-cloak>
+            <div x-show="{{ count($allCardsMats) > 0 ? 'true' : 'false' }} && hasMatchingItems({{ json_encode($allCardsMats) }}) === false" class="py-16 text-center" x-cloak>
                 <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mb-3">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
@@ -1407,7 +1581,7 @@
                         </tr>
                     @endforelse
 
-                    <tr x-show="hasMatchingItems({{ json_encode($allTableMats) }}) === false" x-cloak>
+                    <tr x-show="{{ count($allTableMats) > 0 ? 'true' : 'false' }} && hasMatchingItems({{ json_encode($allTableMats) }}) === false" x-cloak>
                         <td colspan="8" class="py-12 text-center text-slate-400">
                             Tidak ada data material yang sesuai filter atau kata kunci pencarian.
                         </td>
@@ -1416,6 +1590,7 @@
             </table>
         </div>
     </div>
+    @endif
 
     <!-- 7. DUA KOLOM: RECENT DOS & ALERTS -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1521,12 +1696,17 @@
             stroke: { show: true, width: 2, colors: ['transparent'] },
             xaxis: {
                 categories: categories,
-                labels: { style: { fontSize: '11px', fontWeight: 500 } }
+                labels: { style: { fontSize: '11px', fontWeight: 500 }, rotate: -35, hideOverlappingLabels: false, trim: true }
             },
             yaxis: {
                 labels: {
                     formatter: function (val) {
-                        return 'Rp ' + (val / 1000000).toFixed(0) + ' Jt';
+                        // Satuan sumbu menyesuaikan besar anggaran (Miliar / Juta / Ribu)
+                        const abs = Math.abs(val);
+                        if (abs >= 1e9) return 'Rp ' + (val / 1e9).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+                        if (abs >= 1e6) return 'Rp ' + (val / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' Jt';
+                        if (abs >= 1e3) return 'Rp ' + (val / 1e3).toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' Rb';
+                        return 'Rp ' + val.toLocaleString('id-ID', { maximumFractionDigits: 0 });
                     }
                 }
             },

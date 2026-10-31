@@ -210,8 +210,9 @@ class RabExcelService
 
         $activeNode1 = null;
         $activeNode2 = null;
-        $activeNode3 = null;
         $activeItem = null;
+        $hasCategory = false;
+        $defaultCategoryNoted = false;
 
         for ($r = 2; $r <= $highestRow; $r++) {
             $level = (int) $this->cellValue($sheetDetail->getCell("A{$r}"));
@@ -235,6 +236,8 @@ class RabExcelService
 
             $result['stats']['total_rows']++;
             $rowErrors = [];
+            $rowNotes = [];
+            $autoItem = false;
 
             // Validation Rules
             if ($level < 1 || $level > 5) {
@@ -245,41 +248,45 @@ class RabExcelService
                 $rowErrors[] = "Baris {$r}: Uraian pekerjaan/material tidak boleh kosong";
             }
 
-            // Hierarchy validation
+            // Hirarki fleksibel: RAB boleh hanya berisi sebagian level (mis. hanya level 4,
+            // hanya level 5, atau hanya level 1-3). Level yang "melompat" disesuaikan otomatis.
             if ($level == 1) {
                 $result['stats']['level_1_count']++;
                 $activeNode1 = $name;
                 $activeNode2 = null;
-                $activeNode3 = null;
                 $activeItem = null;
+                $hasCategory = true;
             } elseif ($level == 2) {
                 $result['stats']['level_2_count']++;
                 if (! $activeNode1) {
-                    $rowErrors[] = "Baris {$r}: Sub Kategori (Level 2) muncul sebelum ada Kategori (Level 1)";
+                    $rowNotes[] = 'Tanpa Kategori Level 1: dijadikan kategori utama';
                 }
                 $activeNode2 = $name;
-                $activeNode3 = null;
                 $activeItem = null;
+                $hasCategory = true;
             } elseif ($level == 3) {
                 $result['stats']['level_3_count']++;
                 if (! $activeNode2) {
-                    $rowErrors[] = "Baris {$r}: Sub-Sub Kategori (Level 3) muncul sebelum ada Sub Kategori (Level 2)";
+                    $rowNotes[] = $activeNode1
+                        ? 'Tanpa Sub Kategori Level 2: dipasang langsung di bawah Kategori Level 1'
+                        : 'Tanpa Kategori Level 1/2: dijadikan kategori utama';
                 }
-                $activeNode3 = $name;
                 $activeItem = null;
+                $hasCategory = true;
             } elseif ($level == 4) {
                 $result['stats']['level_4_count']++;
                 $activeItem = $name;
-                $result['stats']['total_rab_amount'] += (float) $totalPrice;
-
-                if ($unitCode !== '' && $this->findUnitId($unitLookup, $unitCode) === null) {
-                    $result['warnings'][] = "Baris {$r}: Satuan '{$unitCode}' belum terdaftar di master units (akan otomatis dibuat)";
-                }
             } elseif ($level == 5) {
                 $result['stats']['level_5_count']++;
                 if (! $activeItem) {
-                    $rowErrors[] = "Baris {$r}: Material Breakdown (Level 5) harus berada di bawah Item Pekerjaan (Level 4)";
+                    $autoItem = true;
+                    $rowNotes[] = 'Tanpa Item Pekerjaan Level 4: item pekerjaan dibuat otomatis dari material ini';
                 }
+            }
+
+            if (in_array($level, [4, 5], true) && ! $hasCategory && ! $defaultCategoryNoted) {
+                $rowNotes[] = "Tanpa kategori: item dimasukkan ke kategori 'PEKERJAAN UMUM'";
+                $defaultCategoryNoted = true;
             }
 
             if (! empty($rowErrors)) {
@@ -297,10 +304,56 @@ class RabExcelService
                 'unit_price' => $unitPrice,
                 'total_price' => $totalPrice,
                 'errors' => $rowErrors,
+                'notes' => $rowNotes,
+                'auto_item' => $autoItem,
+                'as_item' => false,
             ];
         }
 
+        $this->markValuedLeafCategories($result['rows']);
+
+        // Estimasi total & peringatan satuan dihitung dari baris yang benar-benar menjadi item pekerjaan
+        foreach ($result['rows'] as $row) {
+            $becomesItem = $row['level'] == 4 || $row['auto_item'] || $row['as_item'];
+            if ($becomesItem) {
+                $result['stats']['total_rab_amount'] += (float) $row['total_price'];
+            }
+
+            if (($becomesItem || $row['level'] == 5) && $row['unit'] !== '' && $this->findUnitId($unitLookup, $row['unit']) === null) {
+                $result['warnings'][] = "Baris {$row['excel_row']}: Satuan '{$row['unit']}' belum terdaftar di master units (akan otomatis dibuat)";
+            }
+
+            foreach ($row['notes'] as $note) {
+                $result['warnings'][] = "Baris {$row['excel_row']}: {$note}";
+            }
+        }
+
+        $result['warnings'] = array_values(array_unique($result['warnings']));
+
         return $result;
+    }
+
+    /**
+     * Kategori (level 1-3) tanpa baris turunan yang membawa nilai (jumlah harga) dicatat
+     * sebagai item pekerjaan, agar RAB ringkas (hanya level 1/2/3) tetap memiliki anggaran.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function markValuedLeafCategories(array &$rows): void
+    {
+        $count = count($rows);
+        for ($i = 0; $i < $count; $i++) {
+            $level = (int) $rows[$i]['level'];
+            if ($level < 1 || $level > 3) {
+                continue;
+            }
+
+            $hasChildren = $i + 1 < $count && (int) $rows[$i + 1]['level'] > $level;
+            if (! $hasChildren && (float) ($rows[$i]['total_price'] ?? 0) > 0) {
+                $rows[$i]['as_item'] = true;
+                $rows[$i]['notes'][] = 'Kategori tanpa rincian: nilainya dicatat sebagai item pekerjaan';
+            }
+        }
     }
 
     /**
@@ -337,6 +390,33 @@ class RabExcelService
 
             $sortOrder = 1;
 
+            // Node terdalam yang aktif; bila RAB tidak punya kategori sama sekali, buat default
+            $resolveTargetNode = function () use (&$currentL1, &$currentL2, &$currentL3, &$sortOrder, $project): RabNode {
+                $targetNode = $currentL3 ?: ($currentL2 ?: $currentL1);
+                if (! $targetNode) {
+                    $targetNode = $currentL1 = RabNode::create([
+                        'project_id' => $project->id,
+                        'parent_id' => null,
+                        'level' => 1,
+                        'code' => 'I',
+                        'name' => 'PEKERJAAN UMUM',
+                        'sort_order' => $sortOrder++,
+                    ]);
+                }
+
+                return $targetNode;
+            };
+
+            // Tanpa event model: subtotal, cost realization, dan baseline material
+            // dihitung sekali secara massal setelah seluruh baris tersimpan.
+            $createItem = function (RabNode $node, array $attributes) use (&$sortOrder): RabItem {
+                return RabItem::createQuietly($attributes + [
+                    'rab_node_id' => $node->id,
+                    'is_composite' => false,
+                    'sort_order' => $sortOrder++,
+                ]);
+            };
+
             foreach ($previewData['rows'] as $row) {
                 $level = $row['level'];
                 $code = $row['code'];
@@ -348,8 +428,9 @@ class RabExcelService
                     $totalPrice = round($volume * $unitPrice, 2);
                 }
 
-                // Satuan hanya relevan untuk item (level 4) & material (level 5)
-                $unitId = $level >= 4 ? $this->resolveUnitId($unitLookup, (string) ($row['unit'] ?? '')) : null;
+                // Satuan hanya relevan untuk baris yang menjadi item (level 4/5 atau kategori bernilai)
+                $asItem = ! empty($row['as_item']);
+                $unitId = ($level >= 4 || $asItem) ? $this->resolveUnitId($unitLookup, (string) ($row['unit'] ?? '')) : null;
 
                 if ($level == 1) {
                     $currentL1 = RabNode::create([
@@ -364,6 +445,7 @@ class RabExcelService
                     $currentL3 = null;
                     $currentL4 = null;
                 } elseif ($level == 2) {
+                    // Tanpa level 1 sebelumnya: menjadi kategori utama (parent null)
                     $currentL2 = RabNode::create([
                         'project_id' => $project->id,
                         'parent_id' => $currentL1?->id,
@@ -375,9 +457,10 @@ class RabExcelService
                     $currentL3 = null;
                     $currentL4 = null;
                 } elseif ($level == 3) {
+                    // Pasang ke induk terdekat yang ada (level 2, atau langsung level 1)
                     $currentL3 = RabNode::create([
                         'project_id' => $project->id,
-                        'parent_id' => $currentL2?->id,
+                        'parent_id' => ($currentL2 ?: $currentL1)?->id,
                         'level' => 3,
                         'code' => $code ?: 'SUBSUB',
                         'name' => $name,
@@ -385,35 +468,25 @@ class RabExcelService
                     ]);
                     $currentL4 = null;
                 } elseif ($level == 4) {
-                    // Deepest active node
-                    $targetNode = $currentL3 ?: ($currentL2 ?: $currentL1);
-                    if (! $targetNode) {
-                        // Create default category if missing
-                        $targetNode = RabNode::create([
-                            'project_id' => $project->id,
-                            'parent_id' => null,
-                            'level' => 1,
-                            'code' => 'I',
-                            'name' => 'PEKERJAAN UMUM',
-                            'sort_order' => $sortOrder++,
-                        ]);
-                        $currentL1 = $targetNode;
-                    }
-
-                    // Tanpa event model: subtotal, cost realization, dan baseline material
-                    // dihitung sekali secara massal setelah seluruh baris tersimpan.
-                    $currentL4 = RabItem::createQuietly([
-                        'rab_node_id' => $targetNode->id,
+                    $currentL4 = $createItem($resolveTargetNode(), [
                         'item_no' => $code ?: ($sortOrder.'.0'),
                         'name' => $name,
                         'volume' => $volume,
                         'unit_id' => $unitId,
                         'unit_price' => $unitPrice,
                         'total_price' => $totalPrice,
-                        'is_composite' => false,
-                        'sort_order' => $sortOrder++,
                     ]);
-                } elseif ($level == 5 && $currentL4) {
+                } elseif ($level == 5) {
+                    // Material tanpa item pekerjaan: buat item otomatis dari baris material ini
+                    $parentItem = $currentL4 ?: $createItem($resolveTargetNode(), [
+                        'item_no' => $code ?: ($sortOrder.'.0'),
+                        'name' => $name,
+                        'volume' => $volume,
+                        'unit_id' => $unitId,
+                        'unit_price' => $unitPrice,
+                        'total_price' => $totalPrice,
+                    ]);
+
                     // Find or create material in master (cache per nama agar tidak query berulang)
                     $material = $materialCache[$name] ??= Material::firstOrCreate(
                         ['name' => $name],
@@ -427,7 +500,7 @@ class RabExcelService
                     );
 
                     RabItemMaterial::createQuietly([
-                        'rab_item_id' => $currentL4->id,
+                        'rab_item_id' => $parentItem->id,
                         'material_id' => $material->id,
                         'volume' => $volume,
                         'unit_id' => $unitId,
@@ -436,10 +509,28 @@ class RabExcelService
                         'input_by' => $userId,
                     ]);
 
-                    if (! $currentL4->is_composite) {
-                        $currentL4->is_composite = true;
-                        $currentL4->saveQuietly();
+                    if (! $parentItem->is_composite) {
+                        $parentItem->is_composite = true;
+                        $parentItem->saveQuietly();
                     }
+                }
+
+                // Kategori tanpa rincian yang membawa nilai: dicatat sebagai item pekerjaan
+                if ($asItem && $level >= 1 && $level <= 3) {
+                    $node = match ($level) {
+                        1 => $currentL1,
+                        2 => $currentL2,
+                        default => $currentL3,
+                    };
+
+                    $createItem($node, [
+                        'item_no' => $code ?: '1.0',
+                        'name' => $name,
+                        'volume' => $volume > 0 ? $volume : 1,
+                        'unit_id' => $unitId,
+                        'unit_price' => $unitPrice > 0 ? $unitPrice : $totalPrice,
+                        'total_price' => $totalPrice,
+                    ]);
                 }
             }
 

@@ -53,6 +53,22 @@
         </div>
     @endif
 
+    <!-- PENYESUAIAN OTOMATIS & PERINGATAN (struktur RAB sebagian level, satuan baru, dll) -->
+    @if(!empty($preview['warnings']))
+        <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-sm" x-data="{ open: {{ count($preview['warnings']) <= 6 ? 'true' : 'false' }} }">
+            <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-3 text-left">
+                <span class="text-xs font-bold">Catatan Penyesuaian Otomatis ({{ count($preview['warnings']) }})</span>
+                <span class="text-[11px] font-semibold text-amber-700" x-text="open ? 'Sembunyikan' : 'Tampilkan'"></span>
+            </button>
+            <p class="text-[11px] text-amber-800 mt-1">RAB tidak wajib lengkap level 1-5. Struktur di bawah ini akan disesuaikan saat disimpan.</p>
+            <ul x-show="open" class="mt-2 space-y-1 list-disc list-inside text-[11px] max-h-56 overflow-y-auto">
+                @foreach($preview['warnings'] as $warn)
+                    <li>{{ $warn }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!-- STATS SUMMARY -->
     <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         <div class="card-clean p-4 text-center">
@@ -155,6 +171,8 @@
                             <td class="py-2.5 px-4 text-center">
                                 @if($hasErr)
                                     <span class="badge-clean bg-rose-100 text-rose-800 text-[10px]">Error</span>
+                                @elseif(!empty($row['notes']))
+                                    <span class="badge-clean bg-amber-100 text-amber-800 text-[10px] cursor-help" title="{{ implode(' | ', $row['notes']) }}">Disesuaikan</span>
                                 @else
                                     <span class="badge-clean bg-emerald-100 text-emerald-800 text-[10px]">OK</span>
                                 @endif

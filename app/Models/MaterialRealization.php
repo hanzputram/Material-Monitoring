@@ -125,11 +125,11 @@ class MaterialRealization extends Model
      * Hitung planned / received / returned qty untuk sekumpulan material dalam satu proyek.
      *
      * @param  array<int, int>  $materialIds
-     * @return array{planned: array<int, float>, received: array<int, float>, returned: array<int, float>, parents: array<int, bool>}
+     * @return array{planned: array<int, float>, received: array<int, float>, received_unallocated: array<int, float>, returned: array<int, float>, parents: array<int, bool>}
      */
     protected static function aggregateQuantities(int $projectId, array $materialIds): array
     {
-        $result = ['planned' => [], 'received' => [], 'returned' => [], 'parents' => []];
+        $result = ['planned' => [], 'received' => [], 'received_unallocated' => [], 'returned' => [], 'parents' => []];
         if (empty($materialIds)) {
             return $result;
         }
@@ -145,13 +145,23 @@ class MaterialRealization extends Model
                 ->pluck('total', 'material_id');
 
             // 2. actual_qty: DO tervalidasi dikurangi retur yang selesai
-            $received = DeliveryOrderItem::query()
+            $receivedQuery = fn () => DeliveryOrderItem::query()
                 ->join('delivery_orders', 'delivery_orders.id', '=', 'delivery_order_items.delivery_order_id')
                 ->where('delivery_orders.project_id', $projectId)
                 ->where('delivery_orders.status', 'validated')
                 ->whereIn('delivery_order_items.material_id', $chunk)
                 ->groupBy('delivery_order_items.material_id')
-                ->selectRaw('delivery_order_items.material_id as material_id, SUM(delivery_order_items.qty_received) as total')
+                ->selectRaw('delivery_order_items.material_id as material_id, SUM(delivery_order_items.qty_received) as total');
+
+            $received = $receivedQuery()->pluck('total', 'material_id');
+
+            // Penerimaan yang TIDAK berasal dari PO teralokasi ke item RAB (level 4 tanpa BOM)
+            $receivedUnallocated = $receivedQuery()
+                ->whereNotExists(fn ($q) => $q->selectRaw('1')
+                    ->from('purchase_order_items as allocated_poi')
+                    ->whereColumn('allocated_poi.purchase_order_id', 'delivery_order_items.purchase_order_id')
+                    ->whereColumn('allocated_poi.material_id', 'delivery_order_items.material_id')
+                    ->whereNotNull('allocated_poi.rab_item_id'))
                 ->pluck('total', 'material_id');
 
             $returned = PurchaseReturnItem::query()
@@ -175,6 +185,9 @@ class MaterialRealization extends Model
             foreach ($received as $id => $total) {
                 $result['received'][(int) $id] = (float) $total;
             }
+            foreach ($receivedUnallocated as $id => $total) {
+                $result['received_unallocated'][(int) $id] = (float) $total;
+            }
             foreach ($returned as $id => $total) {
                 $result['returned'][(int) $id] = (float) $total;
             }
@@ -187,7 +200,7 @@ class MaterialRealization extends Model
     }
 
     /**
-     * @param  array{planned: array<int, float>, received: array<int, float>, returned: array<int, float>, parents: array<int, bool>}  $quantities
+     * @param  array{planned: array<int, float>, received: array<int, float>, received_unallocated: array<int, float>, returned: array<int, float>, parents: array<int, bool>}  $quantities
      */
     protected static function applyRecalculation(Project $project, Material $material, array $quantities, ?self $existing): self
     {
@@ -211,7 +224,13 @@ class MaterialRealization extends Model
         // 4. Status determination based on project thresholds
         $isParentWithBreakdown = $quantities['parents'][$materialId] ?? false;
 
-        if ($isParentWithBreakdown && $plannedQty == 0 && $actualQty == 0) {
+        // Material di luar BOM yang seluruh penerimaannya berasal dari PO teralokasi ke item RAB
+        // (RAB tanpa level 5) dipantau lewat monitoring item pekerjaan, bukan sebagai material
+        // "melebihi RAB" dengan rencana 0.
+        $unallocatedReceived = (float) ($quantities['received_unallocated'][$materialId] ?? 0);
+        $coveredByItemMonitoring = $plannedQty == 0 && ! $isParentWithBreakdown && $receivedQty > 0 && $unallocatedReceived <= 0;
+
+        if (($isParentWithBreakdown && $plannedQty == 0 && $actualQty == 0) || $coveredByItemMonitoring) {
             if ($existing) {
                 Alert::where('project_id', $projectId)
                     ->where('reference_type', self::class)
